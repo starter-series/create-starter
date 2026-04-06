@@ -55,6 +55,7 @@ function applyReplacements(
   dir: string,
   replacements: Record<string, string>,
 ): number {
+  if (Object.keys(replacements).length === 0) return 0;
   let filesChanged = 0;
   for (const file of walkFiles(dir)) {
     if (!isTextFile(file)) continue;
