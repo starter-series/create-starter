@@ -29,40 +29,32 @@ You are a project scaffolding assistant for the **Starter Series** templates.
 4. Run the scaffolding:
 
 ```bash
-# Clone template (strip git history)
 REPO="starter-series/{template-repo}"
-npx degit "$REPO" {project-name}
+
+# Download and extract template (clean, no git history)
+mkdir -p {project-name}
+curl -sL "https://github.com/$REPO/archive/refs/heads/main.tar.gz" | tar -xz --strip-components=1 -C {project-name}
+
 cd {project-name}
 
-# Replace placeholders in all text files
-# Default project name from template → user's project name
-# Default description from template → user's description
-# Also replace underscore variants for Python packages
+# Replace default placeholders in all text files:
+#   Default project name → user's project name
+#   Default description → user's description
+#   Underscore variants for Python (my_mcp_server → user_project)
 
 # Re-init git
 rm -rf .git && git init
 ```
 
-5. Show the user next steps based on the template stack:
+5. Show next steps based on template:
 
-**For TypeScript/JavaScript templates:**
-```bash
-cd {project-name}
-npm install
-npm run dev
-```
-
-**For Python templates:**
-```bash
-cd {project-name}
-python -m venv .venv && source .venv/bin/activate
-pip install -e '.[dev]'
-python -m {project_name_underscored}
-```
+| Template | Post-scaffold steps |
+|----------|-------------------|
+| All JS/TS templates | `npm install` then `npm run dev` |
+| Python templates | `python -m venv .venv && source .venv/bin/activate` then `pip install -e '.[dev]'` |
+| docker-deploy | `docker compose up` |
 
 ## Variable Replacement Reference
-
-Each template has these defaults to replace:
 
 | Template | Default Name | Default Description |
 |----------|-------------|-------------------|
@@ -77,12 +69,10 @@ Each template has these defaults to replace:
 | cloudflare-pages | `my-site` | `A static website` |
 | docker-deploy | `my-service` | `A containerized service` |
 
-Replace in: `package.json`, `pyproject.toml`, `README.md`, and all text files containing the defaults.
-For Python packages, also replace the underscore variant (`my_mcp_server` -> `user_project_name`) and rename the `src/` subdirectory.
+For Python packages, also rename the `src/` subdirectory (`my_mcp_server/` -> `user_project_name/`).
 
 ## Rules
 
-- Always use `degit` for clean clones (no git history).
 - Never leave template defaults in the scaffolded project.
 - After scaffolding, suggest the user review `.env.example` if it exists.
-- Keep responses concise; the user wants to start coding, not read docs.
+- Keep responses concise.

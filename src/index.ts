@@ -11,27 +11,29 @@ const server = new McpServer({
   version: "0.1.0",
 });
 
-// ── Tool: list_templates ─────────────────────────────────────────
-
 server.tool(
   "list_templates",
   "List all available Starter Series project templates",
   {},
-  async () => {
-    const list = templates.map((t) => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      stack: t.stack,
-      category: t.category,
-    }));
-    return {
-      content: [{ type: "text", text: JSON.stringify(list, null, 2) }],
-    };
-  },
+  async () => ({
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          templates.map(({ id, name, description, stack, category }) => ({
+            id,
+            name,
+            description,
+            stack,
+            category,
+          })),
+          null,
+          2,
+        ),
+      },
+    ],
+  }),
 );
-
-// ── Tool: create_project ─────────────────────────────────────────
 
 server.tool(
   "create_project",
@@ -57,7 +59,7 @@ server.tool(
     const tmpl = getTemplate(templateId);
     if (!tmpl) {
       return {
-        content: [{ type: "text", text: `Unknown template: ${templateId}` }],
+        content: [{ type: "text" as const, text: `Unknown template: ${templateId}` }],
         isError: true,
       };
     }
@@ -70,23 +72,19 @@ server.tool(
         outputDir: output_dir,
       });
 
+      const steps = [`cd ${name}`, ...tmpl.postSteps];
+
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: [
               `Project "${name}" created from ${tmpl.name}`,
               `  Path: ${result.path}`,
               `  Files customized: ${result.filesReplaced}`,
               "",
               "Next steps:",
-              `  cd ${name}`,
-              tmpl.stack.includes("python")
-                ? "  python -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]'"
-                : "  npm install",
-              tmpl.stack.includes("python")
-                ? "  python -m " + name.replaceAll("-", "_")
-                : "  npm run dev",
+              ...steps.map((s) => `  ${s}`),
             ].join("\n"),
           },
         ],
@@ -94,7 +92,10 @@ server.tool(
     } catch (e) {
       return {
         content: [
-          { type: "text", text: `Failed to scaffold: ${(e as Error).message}` },
+          {
+            type: "text" as const,
+            text: `Failed to scaffold: ${(e as Error).message}`,
+          },
         ],
         isError: true,
       };
@@ -102,14 +103,8 @@ server.tool(
   },
 );
 
-// ── Start ────────────────────────────────────────────────────────
-
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-}
-
-main().catch((err) => {
+const transport = new StdioServerTransport();
+server.connect(transport).catch((err) => {
   console.error("Fatal:", err);
   process.exit(1);
 });

@@ -5,30 +5,17 @@ export interface Template {
   repo: string;
   stack: string[];
   category: "mcp" | "package" | "bot" | "app" | "extension" | "deploy";
-  variables: Variable[];
-}
-
-export interface Variable {
-  key: string;
-  description: string;
-  default?: string;
-  /** File globs where this variable should be replaced */
-  files: string[];
+  defaults: { name: string; description: string };
+  postSteps: string[];
 }
 
 const ORG = "starter-series";
 
-const nameVar: Variable = {
-  key: "project_name",
-  description: "Project name (kebab-case)",
-  files: ["package.json", "pyproject.toml", "README.md"],
-};
-
-const descVar: Variable = {
-  key: "project_description",
-  description: "One-line project description",
-  files: ["package.json", "pyproject.toml", "README.md"],
-};
+const JS_STEPS = ["npm install", "npm run dev"];
+const PY_STEPS = [
+  "python -m venv .venv && source .venv/bin/activate",
+  "pip install -e '.[dev]'",
+];
 
 export const templates: Template[] = [
   {
@@ -39,10 +26,8 @@ export const templates: Template[] = [
     repo: `${ORG}/mcp-server-starter`,
     stack: ["typescript", "mcp-sdk", "zod"],
     category: "mcp",
-    variables: [
-      { ...nameVar, default: "my-mcp-server" },
-      { ...descVar, default: "An MCP server" },
-    ],
+    defaults: { name: "my-mcp-server", description: "An MCP server" },
+    postSteps: JS_STEPS,
   },
   {
     id: "mcp-server-python",
@@ -52,10 +37,8 @@ export const templates: Template[] = [
     repo: `${ORG}/python-mcp-server-starter`,
     stack: ["python", "fastmcp"],
     category: "mcp",
-    variables: [
-      { ...nameVar, default: "my-mcp-server" },
-      { ...descVar, default: "An MCP server" },
-    ],
+    defaults: { name: "my-mcp-server", description: "An MCP server" },
+    postSteps: PY_STEPS,
   },
   {
     id: "npm-package",
@@ -65,10 +48,8 @@ export const templates: Template[] = [
     repo: `${ORG}/npm-package-starter`,
     stack: ["javascript", "jest", "eslint"],
     category: "package",
-    variables: [
-      { ...nameVar, default: "my-package" },
-      { ...descVar, default: "A lightweight npm package" },
-    ],
+    defaults: { name: "my-package", description: "A lightweight npm package" },
+    postSteps: JS_STEPS,
   },
   {
     id: "discord-bot",
@@ -78,10 +59,8 @@ export const templates: Template[] = [
     repo: `${ORG}/discord-bot-starter`,
     stack: ["typescript", "discord.js", "docker"],
     category: "bot",
-    variables: [
-      { ...nameVar, default: "my-discord-bot" },
-      { ...descVar, default: "A Discord bot" },
-    ],
+    defaults: { name: "my-discord-bot", description: "A Discord bot" },
+    postSteps: JS_STEPS,
   },
   {
     id: "telegram-bot",
@@ -91,10 +70,8 @@ export const templates: Template[] = [
     repo: `${ORG}/telegram-bot-starter`,
     stack: ["typescript", "grammy", "docker"],
     category: "bot",
-    variables: [
-      { ...nameVar, default: "my-telegram-bot" },
-      { ...descVar, default: "A Telegram bot" },
-    ],
+    defaults: { name: "my-telegram-bot", description: "A Telegram bot" },
+    postSteps: JS_STEPS,
   },
   {
     id: "browser-extension",
@@ -104,10 +81,8 @@ export const templates: Template[] = [
     repo: `${ORG}/browser-extension-starter`,
     stack: ["javascript", "manifest-v3"],
     category: "extension",
-    variables: [
-      { ...nameVar, default: "my-extension" },
-      { ...descVar, default: "A browser extension" },
-    ],
+    defaults: { name: "my-extension", description: "A browser extension" },
+    postSteps: JS_STEPS,
   },
   {
     id: "vscode-extension",
@@ -117,10 +92,11 @@ export const templates: Template[] = [
     repo: `${ORG}/vscode-extension-starter`,
     stack: ["javascript", "vscode-api"],
     category: "extension",
-    variables: [
-      { ...nameVar, default: "my-vscode-extension" },
-      { ...descVar, default: "A VS Code extension" },
-    ],
+    defaults: {
+      name: "my-vscode-extension",
+      description: "A VS Code extension",
+    },
+    postSteps: JS_STEPS,
   },
   {
     id: "electron-app",
@@ -130,10 +106,8 @@ export const templates: Template[] = [
     repo: `${ORG}/electron-app-starter`,
     stack: ["typescript", "electron", "electron-builder"],
     category: "app",
-    variables: [
-      { ...nameVar, default: "my-electron-app" },
-      { ...descVar, default: "A desktop application" },
-    ],
+    defaults: { name: "my-electron-app", description: "A desktop application" },
+    postSteps: JS_STEPS,
   },
   {
     id: "react-native",
@@ -143,10 +117,8 @@ export const templates: Template[] = [
     repo: `${ORG}/react-native-starter`,
     stack: ["typescript", "expo", "react-native"],
     category: "app",
-    variables: [
-      { ...nameVar, default: "my-app" },
-      { ...descVar, default: "A mobile application" },
-    ],
+    defaults: { name: "my-app", description: "A mobile application" },
+    postSteps: JS_STEPS,
   },
   {
     id: "cloudflare-pages",
@@ -156,10 +128,8 @@ export const templates: Template[] = [
     repo: `${ORG}/cloudflare-pages-starter`,
     stack: ["html", "css", "javascript", "wrangler"],
     category: "deploy",
-    variables: [
-      { ...nameVar, default: "my-site" },
-      { ...descVar, default: "A static website" },
-    ],
+    defaults: { name: "my-site", description: "A static website" },
+    postSteps: JS_STEPS,
   },
   {
     id: "docker-deploy",
@@ -169,10 +139,8 @@ export const templates: Template[] = [
     repo: `${ORG}/docker-deploy-starter`,
     stack: ["docker", "github-actions"],
     category: "deploy",
-    variables: [
-      { ...nameVar, default: "my-service" },
-      { ...descVar, default: "A containerized service" },
-    ],
+    defaults: { name: "my-service", description: "A containerized service" },
+    postSteps: ["docker compose up"],
   },
 ];
 
