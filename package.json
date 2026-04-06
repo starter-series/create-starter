@@ -1,0 +1,26 @@
+{
+  "name": "create-starter",
+  "version": "0.1.0",
+  "description": "Scaffold projects from the Starter Series templates — available as MCP server and Claude Code skill",
+  "type": "module",
+  "bin": {
+    "create-starter": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "starter", "scaffold", "template", "claude-code"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
