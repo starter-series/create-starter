@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, rmSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve, extname } from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { Template } from "./templates.js";
@@ -9,8 +9,8 @@ async function downloadAndExtract(repo: string, dest: string): Promise<void> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
 
-  const tmpTar = join(dest, ".._template.tar.gz");
   mkdirSync(dest, { recursive: true });
+  const tmpTar = join(dest, "_template.tar.gz");
   const { Readable } = await import("node:stream");
   await pipeline(
     Readable.fromWeb(res.body as import("node:stream/web").ReadableStream),
@@ -120,7 +120,7 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
     const pyDir = join(dest, "src", defaultName.replaceAll("-", "_"));
     const pyDirNew = join(dest, "src", opts.projectName.replaceAll("-", "_"));
     if (existsSync(pyDir)) {
-      execSync(`mv "${pyDir}" "${pyDirNew}"`);
+      renameSync(pyDir, pyDirNew);
     }
   }
 
