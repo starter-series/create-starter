@@ -47,16 +47,11 @@ jobs:
       - name: Security audit
         run: npm audit --audit-level=high
 
-      - name: Typecheck
-        run: npm run lint
-
-      - name: Build
+      - name: Build (tsc — also typechecks)
         run: npm run build
 
-      - name: Verify CLI bin is executable
-        run: |
-          test -f dist/index.js
-          node dist/index.js --help 2>&1 | head -5 || true
+      - name: Verify CLI bin exists
+        run: test -f dist/index.js
 
       - name: Scaffold smoke test
         run: |
