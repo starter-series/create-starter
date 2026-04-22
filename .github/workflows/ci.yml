@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        run: |
+          curl -sSfL "$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
+            | grep -o 'https://[^"]*linux_x64.tar.gz')" | tar xz -C /tmp
+          /tmp/gitleaks detect --source . --verbose --redact
+
+      - name: Check for large files
+        run: |
+          LARGE=$(find . -not -path './.git/*' -not -path './node_modules/*' -type f -size +5M)
+          if [ -n "$LARGE" ]; then
+            echo "::error::Large files detected (>5 MB):"
+            echo "$LARGE"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: npx --yes license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
+
+      - name: Security audit
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify CLI bin is executable
+        run: |
+          test -f dist/index.js
+          node dist/index.js --help 2>&1 | head -5 || true
+
+      - name: Scaffold smoke test
+        run: |
+          # Verify templates.ts references valid repo names (no typos)
+          node --input-type=module -e "
+            import('./dist/templates.js').then(m => {
+              const ids = m.templates.map(t => t.id);
+              if (new Set(ids).size !== ids.length) {
+                console.error('Duplicate template ids');
+                process.exit(1);
+              }
+              for (const t of m.templates) {
+                if (!t.repo || !t.repo.includes('/')) {
+                  console.error('Invalid repo:', t.id);
+                  process.exit(1);
+                }
+              }
+              console.log('Templates OK:', ids.length);
+            });
+          "
