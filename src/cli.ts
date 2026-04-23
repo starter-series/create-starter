@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { stderrLogger } from "./log.js";
-import { scaffold } from "./scaffold.js";
+import { formatScaffoldReport, scaffold } from "./scaffold.js";
 import { getTemplate, templates } from "./templates.js";
 
 const HELP = `create-starter — scaffold a project from the Starter Series.
@@ -157,20 +157,7 @@ export async function runCli(argv: string[]): Promise<number> {
       initGit: !parsed.values["no-git"],
       logger: stderrLogger,
     });
-    const steps = [`cd ${name}`, ...template.postSteps];
-    process.stdout.write(
-      [
-        `\nProject "${name}" created from ${template.name}`,
-        `  Path: ${result.path}`,
-        `  Extracted: ${result.filesExtracted} entries`,
-        `  Customized: ${result.filesReplaced} files`,
-        result.gitInitialized ? "  Git: initialized" : "  Git: not initialized",
-        "",
-        "Next steps:",
-        ...steps.map((s) => `  ${s}`),
-        "",
-      ].join("\n"),
-    );
+    process.stdout.write(`\n${formatScaffoldReport(name, template, result)}\n\n`);
     return 0;
   } catch (err) {
     process.stderr.write(`error: ${(err as Error).message}\n`);

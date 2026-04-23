@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { stderrLogger } from "./log.js";
-import { scaffold } from "./scaffold.js";
+import { formatScaffoldReport, SAFE_NAME, scaffold } from "./scaffold.js";
 import { getTemplate, templates } from "./templates.js";
 import { runCli } from "./cli.js";
 
@@ -50,7 +50,7 @@ async function runMcpServer(): Promise<void> {
       name: z
         .string()
         .regex(
-          /^[A-Za-z0-9][A-Za-z0-9_-]*$/,
+          SAFE_NAME,
           "Must start with [A-Za-z0-9] and contain only [A-Za-z0-9_-] (no dots, spaces, or path separators)",
         )
         .describe("Project name (alphanumeric start, '-' or '_' only)"),
@@ -86,22 +86,11 @@ async function runMcpServer(): Promise<void> {
           logger: stderrLogger,
         });
 
-        const steps = [`cd ${name}`, ...tmpl.postSteps];
-
         return {
           content: [
             {
               type: "text" as const,
-              text: [
-                `Project "${name}" created from ${tmpl.name}`,
-                `  Path: ${result.path}`,
-                `  Extracted: ${result.filesExtracted} entries`,
-                `  Customized: ${result.filesReplaced} files`,
-                result.gitInitialized ? "  Git: initialized" : "  Git: not initialized",
-                "",
-                "Next steps:",
-                ...steps.map((s) => `  ${s}`),
-              ].join("\n"),
+              text: formatScaffoldReport(name, tmpl, result),
             },
           ],
         };

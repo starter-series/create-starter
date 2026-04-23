@@ -40,6 +40,24 @@ export interface ScaffoldResult {
   gitInitialized: boolean;
 }
 
+export function formatScaffoldReport(
+  projectName: string,
+  template: Template,
+  result: ScaffoldResult,
+): string {
+  const steps = [`cd ${projectName}`, ...template.postSteps];
+  return [
+    `Project "${projectName}" created from ${template.name}`,
+    `  Path: ${result.path}`,
+    `  Extracted: ${result.filesExtracted} entries`,
+    `  Customized: ${result.filesReplaced} files`,
+    result.gitInitialized ? "  Git: initialized" : "  Git: not initialized",
+    "",
+    "Next steps:",
+    ...steps.map((s) => `  ${s}`),
+  ].join("\n");
+}
+
 // Allow only chars that are safe inside JS identifiers, Python module names,
 // package.json "name", and pyproject names — after kebab-case is swapped to
 // snake_case. Rejecting everything else avoids corrupting unrelated file
@@ -141,7 +159,6 @@ export function updatePyproject(
     projectSnake: string;
   },
 ): void {
-  if (!existsSync(path)) return;
   let content: string;
   try {
     content = readFileSync(path, "utf-8");
@@ -190,8 +207,13 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
   validateProjectName(opts.projectName);
   const finalDest = validateOutputDir(opts.outputDir, opts.projectName, cwd);
 
-  if (existsSync(finalDest) && readdirSync(finalDest).length > 0) {
-    throw new Error(`Directory "${finalDest}" already exists and is not empty`);
+  try {
+    if (readdirSync(finalDest).length > 0) {
+      throw new Error(`Directory "${finalDest}" already exists and is not empty`);
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    // ENOENT is the happy path — destination doesn't exist yet.
   }
 
   const parentDir = dirname(finalDest);
@@ -250,10 +272,9 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
 
     const gitInitialized = initGit ? tryGitInit(workDest, logger) : false;
 
-    if (existsSync(finalDest)) {
-      // Empty dir — remove so rename can take its place on POSIX.
-      await rm(finalDest, { recursive: true, force: true });
-    }
+    // `rm` with force:true tolerates a missing path; handles the case where
+    // finalDest was pre-created empty (e.g., mkdir then scaffold into it).
+    await rm(finalDest, { recursive: true, force: true });
     await rename(workDest, finalDest);
 
     logger.info(`done: ${finalDest}`);
