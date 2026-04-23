@@ -8,9 +8,10 @@
 
 `create-starter` downloads a Starter Series template, substitutes placeholders (name, description), handles Python package renames (pyproject + src dir), and runs `git init`. Input is validated by Zod before any filesystem change, extraction happens in a sibling tmp dir so failures never leave half-scaffolded output, and downloads have retry + timeout + size limits.
 
-It runs in four modes — pick whichever matches your workflow.
+It runs in five modes — pick whichever matches your workflow.
 
 - **Claude Code plugin** — `/plugin marketplace add starter-series/create-starter` then `/plugin install create-starter@starter-series`. Ships the MCP server and skill together.
+- **Claude Desktop extension** — drag a `.mcpb` from the [latest release](https://github.com/starter-series/create-starter/releases/latest) onto the Claude Desktop settings window. No `npm`, no JSON editing.
 - **CLI** — `npx @starter-series/create my-bot --template discord-bot` in any terminal.
 - **MCP server** — any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, Windsurf, …) can call `list_templates` and `create_project`.
 - **Claude Code skill** — the bundled `skills/create/SKILL.md` guides Claude Code conversationally (auto-installed with the plugin).
@@ -72,6 +73,19 @@ npm run build
 ```
 
 Requires Node.js ≥20.
+
+## One-click install in Claude Desktop
+
+Grab the latest `.mcpb` bundle from the [Releases page](https://github.com/starter-series/create-starter/releases/latest) and drag it onto the Claude Desktop settings window. Claude Desktop unpacks the bundled `dist/` and `node_modules/` and registers `create-starter` as an MCP server — no `npm`, no config file, no absolute path.
+
+> `.mcpb` (MCP Bundle, formerly `.dxt`) is Anthropic's packaged extension format for MCP servers. See [Desktop Extensions](https://www.anthropic.com/engineering/desktop-extensions).
+
+To rebuild the bundle locally:
+
+```bash
+npm ci
+npm run bundle:mcpb   # produces create-starter-<version>.mcpb
+```
 
 ## Use as MCP server
 

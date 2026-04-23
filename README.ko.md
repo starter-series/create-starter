@@ -8,9 +8,10 @@
 
 `create-starter`는 Starter Series 템플릿을 다운로드하고, 플레이스홀더(name, description)를 치환하며, Python 패키지 리네임(pyproject + src 디렉터리)을 처리하고 `git init`까지 수행합니다. 파일시스템 조작 전에 Zod로 입력을 검증하고, 추출은 sibling tmp 디렉터리에서 진행되어 실패해도 중간 결과물이 남지 않으며, 다운로드는 retry + timeout + 크기 제한을 가집니다.
 
-네 가지 모드로 동작 — 워크플로우에 맞게 선택:
+다섯 가지 모드로 동작 — 워크플로우에 맞게 선택:
 
 - **Claude Code 플러그인** — `/plugin marketplace add starter-series/create-starter` 후 `/plugin install create-starter@starter-series`. MCP 서버 + 스킬 한 방에 설치.
+- **Claude Desktop 확장** — [최신 릴리스](https://github.com/starter-series/create-starter/releases/latest)의 `.mcpb` 파일을 Claude Desktop 설정 창에 드래그. `npm`도, JSON 편집도 필요 없음.
 - **CLI** — 아무 터미널에서 `npx @starter-series/create my-bot --template discord-bot`.
 - **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Claude Code, Cursor, Windsurf 등)가 `list_templates`, `create_project` 툴 호출.
 - **Claude Code 스킬** — 번들된 `skills/create/SKILL.md`로 Claude Code가 대화식 스캐폴딩 (플러그인 설치 시 자동 포함).
@@ -72,6 +73,19 @@ npm run build
 ```
 
 Node.js ≥20 필요.
+
+## Claude Desktop 원클릭 설치
+
+[릴리스 페이지](https://github.com/starter-series/create-starter/releases/latest)에서 최신 `.mcpb` 파일을 받아 Claude Desktop 설정 창에 드래그하면 설치 완료. Claude Desktop이 번들된 `dist/`와 `node_modules/`를 풀고 `create-starter`를 MCP 서버로 등록합니다 — `npm` 불필요, 설정 파일 편집 불필요, 절대 경로 불필요.
+
+> `.mcpb` (MCP Bundle, 구 `.dxt`)는 MCP 서버를 위한 Anthropic의 패키지 확장 포맷입니다. [Desktop Extensions](https://www.anthropic.com/engineering/desktop-extensions) 참고.
+
+로컬에서 재빌드:
+
+```bash
+npm ci
+npm run bundle:mcpb   # create-starter-<version>.mcpb 생성
+```
 
 ## MCP 서버로 사용
 

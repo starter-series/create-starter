@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/dist/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "create-starter",
+  "display_name": "create-starter",
+  "version": "0.3.0",
+  "description": "Scaffold projects from the Starter Series templates — MCP server, Claude Code skill, and CLI.",
+  "long_description": "Downloads a Starter Series template (Discord bot, Telegram bot, Docker deploy, MCP server, and more), substitutes placeholders, handles Python package renames, and runs git init. Input is Zod-validated, extraction is atomic via sibling tmp directory, and downloads have retry/timeout/size limits.",
+  "author": {
+    "name": "heznpc",
+    "url": "https://github.com/heznpc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/starter-series/create-starter"
+  },
+  "homepage": "https://github.com/starter-series/create-starter#readme",
+  "documentation": "https://github.com/starter-series/create-starter#readme",
+  "support": "https://github.com/starter-series/create-starter/issues",
+  "license": "MIT",
+  "keywords": ["mcp", "starter", "scaffold", "template", "claude-code", "cli", "bootstrap"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"]
+    }
+  },
+  "tools": [
+    {"name": "list_templates", "description": "List all available Starter Series project templates"},
+    {"name": "create_project", "description": "Scaffold a new project from a Starter Series template"}
+  ],
+  "compatibility": {"runtimes": {"node": ">=20"}}
+}

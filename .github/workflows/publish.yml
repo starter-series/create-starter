@@ -78,9 +78,14 @@ jobs:
       - name: Publish with provenance
         run: npm publish --provenance --access public
 
+      - name: Build Claude Desktop Extension (.mcpb)
+        run: npm run bundle:mcpb
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           name: v${{ steps.pkg.outputs.version }}
           generate_release_notes: true
+          files: |
+            create-starter-${{ steps.pkg.outputs.version }}.mcpb
