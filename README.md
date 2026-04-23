@@ -113,6 +113,18 @@ claude --plugin-dir /path/to/create-starter
 
 Point at a git clone so edits in `skills/create/SKILL.md` or `dist/index.js` take effect the moment the session starts.
 
+## Use via MCP Registry
+
+This server is published to the [Official MCP Registry](https://registry.modelcontextprotocol.io/) under the namespace:
+
+```
+io.github.starter-series/create-starter
+```
+
+MCP-compatible clients that integrate registry discovery can install it by name without manual path wiring. The registry entry points at the npm package `@starter-series/create`, so `npx` runs the same stdio server described above.
+
+Ownership is verified through GitHub OIDC (namespace `io.github.starter-series/*`) and npm tarball inspection (`package.json#mcpName`). See [`.github/workflows/publish-mcp-registry.yml`](.github/workflows/publish-mcp-registry.yml) for the publish flow.
+
 ## Tools
 
 - **`list_templates`** — returns the full template table as JSON.

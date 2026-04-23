@@ -1,0 +1,65 @@
+name: Publish to MCP Registry
+
+# Publishes server.json to the Official MCP Registry (https://registry.modelcontextprotocol.io)
+# using the mcp-publisher CLI with GitHub Actions OIDC auth (zero secrets).
+#
+# Namespace `io.github.starter-series/*` is granted to anyone with write access
+# to the `starter-series` GitHub org via GitHub OIDC — the registry verifies the
+# OIDC token's `repository_owner` claim matches the namespace after `io.github.`.
+#
+# Ownership of the npm package `@starter-series/create` is verified by the registry
+# fetching the published tarball and asserting `package.json#mcpName` equals
+# `server.json#name`.
+#
+# Runs AFTER `Publish to npm` succeeds so the npm package is live when the registry
+# verifies ownership. Also supports manual `workflow_dispatch`.
+
+on:
+  workflow_run:
+    workflows: ["Publish to npm"]
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: publish-mcp-registry
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.6.0
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify server.json exists
+        run: |
+          if [ ! -f server.json ]; then
+            echo "::error::server.json not found at repo root"
+            exit 1
+          fi
+          cat server.json
+
+      - name: Download mcp-publisher
+        run: |
+          URL="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "Downloading $URL"
+          curl -fsSL -o mcp-publisher.tar.gz "$URL"
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher --version || ./mcp-publisher --help | head -20
+
+      - name: Login to MCP Registry via GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: ./mcp-publisher publish
+
+      - name: Summary
+        run: |
+          echo "Published to MCP Registry: $(node -e "console.log(require('./server.json').name + '@' + require('./server.json').version)")" >> "$GITHUB_STEP_SUMMARY"
