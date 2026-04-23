@@ -1,7 +1,7 @@
 {
   "name": "create-starter",
-  "version": "0.1.0",
-  "description": "Scaffold projects from the Starter Series templates — available as MCP server and Claude Code skill",
+  "version": "0.2.0",
+  "description": "Scaffold projects from the Starter Series templates — MCP server, Claude Code skill, and CLI",
   "type": "module",
   "bin": {
     "create-starter": "dist/index.js"
@@ -22,9 +22,20 @@
     "starter",
     "scaffold",
     "template",
-    "claude-code"
+    "claude-code",
+    "cli",
+    "bootstrap"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starter-series/create-starter.git"
+  },
+  "homepage": "https://github.com/starter-series/create-starter#readme",
+  "bugs": {
+    "url": "https://github.com/starter-series/create-starter/issues"
+  },
+  "author": "heznpc",
   "files": [
     "dist",
     "skill",
@@ -33,11 +44,13 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "tar": "^7.5.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/tar": "^6.1.13",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   }

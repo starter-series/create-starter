@@ -1,78 +1,49 @@
 ---
-name: create
-description: Scaffold a new project from Starter Series templates
+name: create-starter
+description: Scaffold a new project from the Starter Series templates (MCP server, Discord/Telegram bot, VS Code / browser extension, Electron, React Native, Cloudflare Pages, npm package, Docker deploy).
 ---
 
-You are a project scaffolding assistant for the **Starter Series** templates.
+You are scaffolding a new project using the **Starter Series** templates via the `create-starter` MCP server.
 
-## Available Templates
+## How to invoke
 
-| ID | Name | Description |
-|----|------|-------------|
-| `mcp-server` | MCP Server (TypeScript) | TypeScript MCP server with OIDC npm publishing, Zod schemas |
-| `mcp-server-python` | MCP Server (Python) | Python MCP server with FastMCP, OIDC PyPI publishing |
-| `npm-package` | npm Package | npm package with OIDC trusted publishing, Jest, ESLint |
-| `discord-bot` | Discord Bot | Discord.js v14 with auto-loaded slash commands, Docker |
-| `telegram-bot` | Telegram Bot | grammY bot with polling + webhook, Docker |
-| `browser-extension` | Browser Extension | Chrome + Firefox MV3 extension with store auto-publish |
-| `vscode-extension` | VS Code Extension | Dual publish to VS Marketplace + Open VSX |
-| `electron-app` | Electron App | Cross-platform desktop app with code signing + auto-update |
-| `react-native` | React Native (Expo) | Expo SDK 52 + EAS Build with App Store / Play Store CI/CD |
-| `cloudflare-pages` | Cloudflare Pages | Static site with Wrangler and Cloudflare Pages auto-deploy |
-| `docker-deploy` | Docker Deploy | Any language, one Dockerfile, GHCR + SSH deploy to VPS |
+The `create-starter` MCP server exposes two tools. Use them directly — do **not** shell out to `curl`, `tar`, or `git clone`.
+
+- `list_templates` — returns the full template table as JSON.
+- `create_project` — scaffolds a new project.
 
 ## Workflow
 
-1. If the user didn't specify a template, show the table above and ask which one.
-2. Ask for the **project name** (kebab-case, e.g. `my-cool-bot`).
-3. Optionally ask for a **one-line description**.
-4. Run the scaffolding:
+1. **Pick a template.** If the user named one explicitly, resolve it against the registry below. If not, call `list_templates` and ask the user to pick one.
+2. **Collect required input:**
+   - `name` *(required)* — project name. Must match `^[A-Za-z0-9][A-Za-z0-9_-]*$` (alnum start, then `[A-Za-z0-9_-]` only). No dots, no spaces, no path separators.
+   - `description` *(optional)* — one-line description that replaces the template default.
+   - `output_dir` *(optional)* — where to create the project. Defaults to `./<name>` relative to the MCP server's cwd.
+3. **Call `create_project`** with the gathered arguments. The server handles download, extraction, placeholder substitution, Python package renaming, and `git init`.
+4. **Report the next steps** from the tool's response (it returns a `cd`-then-install sequence tuned to the template).
 
-```bash
-REPO="starter-series/{template-repo}"
+## Template registry
 
-# Download and extract template (clean, no git history)
-mkdir -p {project-name}
-curl -sL "https://github.com/$REPO/archive/refs/heads/main.tar.gz" | tar -xz --strip-components=1 -C {project-name}
+| ID | Name | Category |
+|----|------|----------|
+| `mcp-server` | MCP Server (TypeScript) | mcp |
+| `mcp-server-python` | MCP Server (Python) | mcp |
+| `npm-package` | npm Package | package |
+| `discord-bot` | Discord Bot | bot |
+| `telegram-bot` | Telegram Bot | bot |
+| `browser-extension` | Browser Extension (MV3) | extension |
+| `vscode-extension` | VS Code Extension | extension |
+| `electron-app` | Electron App | app |
+| `react-native` | React Native (Expo) | app |
+| `cloudflare-pages` | Cloudflare Pages | deploy |
+| `docker-deploy` | Docker Deploy (language-agnostic) | deploy |
 
-cd {project-name}
-
-# Replace default placeholders in all text files:
-#   Default project name → user's project name
-#   Default description → user's description
-#   Underscore variants for Python (my_mcp_server → user_project)
-
-# Re-init git
-rm -rf .git && git init
-```
-
-5. Show next steps based on template:
-
-| Template | Post-scaffold steps |
-|----------|-------------------|
-| All JS/TS templates | `npm install` then `npm run dev` |
-| Python templates | `python -m venv .venv && source .venv/bin/activate` then `pip install -e '.[dev]'` |
-| docker-deploy | `docker compose up` |
-
-## Variable Replacement Reference
-
-| Template | Default Name | Default Description |
-|----------|-------------|-------------------|
-| mcp-server / mcp-server-python | `my-mcp-server` | `An MCP server` |
-| npm-package | `my-package` | `A lightweight npm package` |
-| discord-bot | `my-discord-bot` | `A Discord bot` |
-| telegram-bot | `my-telegram-bot` | `A Telegram bot` |
-| browser-extension | `my-extension` | `A browser extension` |
-| vscode-extension | `my-vscode-extension` | `A VS Code extension` |
-| electron-app | `my-electron-app` | `A desktop application` |
-| react-native | `my-app` | `A mobile application` |
-| cloudflare-pages | `my-site` | `A static website` |
-| docker-deploy | `my-service` | `A containerized service` |
-
-For Python packages, also rename the `src/` subdirectory (`my_mcp_server/` -> `user_project_name/`).
+Call `list_templates` for the authoritative, up-to-date list with full metadata.
 
 ## Rules
 
-- Never leave template defaults in the scaffolded project.
-- After scaffolding, suggest the user review `.env.example` if it exists.
-- Keep responses concise.
+- Never invent template IDs. Only use IDs returned by `list_templates` or present in the table above.
+- Never construct tarball URLs or shell commands yourself — always go through `create_project`.
+- If the tool returns an `isError: true` response, surface the message verbatim and stop; do not retry with a different name unless the user asks.
+- After a successful scaffold, suggest reviewing `.env.example` if the output mentions environment variables, and remind the user that `git init` has already run — they just need to add a remote.
+- Keep your response concise: one line confirming the template + name, then the next-step commands as a code block.

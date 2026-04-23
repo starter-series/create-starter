@@ -1,39 +1,47 @@
 # create-starter
 
-> [Starter Series](https://github.com/starter-series) 템플릿에서 프로젝트를 스캐폴딩 — MCP 서버와 Claude Code 스킬로 제공.
+> [Starter Series](https://github.com/starter-series) 템플릿에서 프로젝트를 스캐폴딩 — MCP 서버, Claude Code 스킬, CLI 세 방식 지원.
 
 [🇬🇧 English](README.md)
 
 ## 무엇을 하나요
 
-`create-starter`는 Starter Series 템플릿을 clone하고, 프로젝트 이름을 리네임하고, 플레이스홀더(name, description)를 치환한 뒤 다음 단계를 출력합니다. 파일시스템 조작은 Zod 검증을 통과한 입력에 대해서만 수행됩니다.
+`create-starter`는 Starter Series 템플릿을 다운로드하고, 플레이스홀더(name, description)를 치환하며, Python 패키지 리네임(pyproject + src 디렉터리)을 처리하고 `git init`까지 수행합니다. 파일시스템 조작 전에 Zod로 입력을 검증하고, 추출은 sibling tmp 디렉터리에서 진행되어 실패해도 중간 결과물이 남지 않으며, 다운로드는 retry + timeout + 크기 제한을 가집니다.
 
-두 가지 모드로 동작:
+세 가지 모드로 동작 — 워크플로우에 맞게 선택:
 
-- **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Cursor 등)가 `list_templates`와 `create_project` 툴을 호출합니다.
-- **Claude Code 스킬** — 번들된 `skill/SKILL.md`로 Claude Code가 대화식으로 스캐폴딩을 구동합니다.
+- **CLI** — 아무 터미널에서 `npx create-starter my-bot --template discord-bot`.
+- **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Claude Code, Cursor, Windsurf 등)가 `list_templates`, `create_project` 툴 호출.
+- **Claude Code 스킬** — 번들된 `skill/SKILL.md`로 Claude Code가 대화식 스캐폴딩.
 
-## 사용 예시
+## 빠른 시작 — CLI
 
-`create-starter`는 타이핑 기반 프롬프트가 아니라 에이전트(Claude Code, Claude Desktop, Cursor, …)가 구동합니다. MCP 서버를 등록([MCP 서버로 사용](#mcp-서버로-사용) 참고)한 뒤의 호출 흐름:
-
-```
-You   › create-starter로 my-bot이라는 discord 봇 스캐폴딩해줘.
-
-Agent › (list_templates 호출 → create_project 호출)
-        Project "my-bot" created from Discord Bot
-          Path: /Users/you/code/my-bot
-          Files customized: 7
-
-        Next steps:
-          cd my-bot
-          npm install
-          npm run dev
+```bash
+npx create-starter my-bot --template discord-bot
+# 또는 clone/build 후 직접:
+node dist/index.js my-bot --template discord-bot
 ```
 
-에이전트가 템플릿 ID와 프로젝트 이름을 확인하고 `create_project`를 호출하면, 사용자는 생성된 디렉터리로 `cd`만 하면 됩니다. 별도 프롬프트 UI 없이 에이전트가 대화를 담당합니다.
+```
+create-starter — scaffold a project from the Starter Series.
 
-> `create-starter` 바이너리 자체는 MCP stdio 프로토콜을 말하므로, MCP 클라이언트 없이 `npx create-starter`처럼 직접 실행하면 인터랙티브 메뉴가 뜨지 않습니다.
+Usage
+  create-starter <name> --template <id> [options]
+  create-starter --list
+  create-starter --help
+
+Options
+  -t, --template <id>      템플릿 ID (--list로 확인)
+  -d, --description <text> 한 줄 설명
+  -o, --output-dir <path>  출력 디렉터리 (기본값: ./<name>)
+      --no-git             scaffold 후 "git init" 생략
+      --list               템플릿 목록 출력 후 종료
+  -h, --help               도움말 출력 후 종료
+  -v, --version            버전 출력 후 종료
+
+Environment
+  CREATE_STARTER_DEBUG=1   상세 stderr 로그 출력
+```
 
 ## 사용 가능한 템플릿
 
@@ -47,15 +55,17 @@ Agent › (list_templates 호출 → create_project 호출)
 | `browser-extension` | Chrome/Firefox MV3 |
 | `vscode-extension` | VS Marketplace + Open VSX |
 | `electron-app` | 크로스 플랫폼 + code signing |
-| `react-native` | Expo SDK 52 + EAS |
+| `react-native` | Expo + EAS |
 | `cloudflare-pages` | Wrangler + Pages |
 | `docker-deploy` | 언어 무관 + GHCR + SSH |
 
-실시간 목록은 `list_templates`로 확인.
+`create-starter --list` (CLI) 또는 `list_templates` (MCP)로 실시간 목록 확인.
 
-## 설치
+## 소스에서 설치
 
 ```bash
+git clone https://github.com/starter-series/create-starter
+cd create-starter
 npm install
 npm run build
 ```
@@ -64,7 +74,7 @@ Node.js ≥20 필요.
 
 ## MCP 서버로 사용
 
-MCP 클라이언트(Claude Desktop, Cursor 등)에 등록:
+빌드된 바이너리를 MCP 클라이언트(Claude Desktop, Cursor 등)에 등록:
 
 ```json
 {
@@ -77,26 +87,34 @@ MCP 클라이언트(Claude Desktop, Cursor 등)에 등록:
 }
 ```
 
-에이전트에게 요청: *"create-starter로 `my-bot` discord 봇을 스캐폴딩해줘."*
+에이전트에게 요청: *"create-starter로 `my-bot` discord 봇을 스캐폴딩해줘."* 에이전트가 필요시 `list_templates`를 호출하고 `create_project`로 스캐폴딩을 실행합니다.
+
+> 추가 인자 없이 호출하면 **MCP stdio** 모드, positional 인자나 플래그가 있으면 **CLI** 모드로 전환됩니다. 두 모드는 동일 스캐폴딩 엔진을 공유.
 
 ## Claude Code 스킬로 사용
-
-`skill/` 디렉터리를 Claude Code 스킬 디렉터리에 복사하거나 심볼릭 링크:
 
 ```bash
 ln -s "$(pwd)/skill" ~/.claude/skills/create-starter
 ```
 
-Claude Code에서: `/create-starter` (또는 자연어로 템플릿 언급).
+Claude Code에서 템플릿을 자연어로 언급하거나 스킬 이름을 직접 부르면, Claude가 `curl`/`tar` 대신 MCP 툴을 호출하도록 유도됩니다.
 
 ## 툴
 
-- **`list_templates`** → 전체 템플릿 테이블 반환.
-- **`create_project`** → 인자:
+- **`list_templates`** — 전체 템플릿 테이블 JSON 반환.
+- **`create_project`** — 인자:
   - `template` *(필수)* — 위 테이블의 템플릿 ID.
-  - `name` *(필수)* — kebab-case 프로젝트 이름 (`^[a-z0-9][a-z0-9._-]*$`).
+  - `name` *(필수)* — `^[A-Za-z0-9][A-Za-z0-9_-]*$` 매칭되는 프로젝트 이름.
   - `description` *(선택)* — 한 줄 설명.
-  - `output_dir` *(선택)* — 기본값 `./<name>`.
+  - `output_dir` *(선택)* — 기본 `./<name>` (MCP 서버 cwd 기준). 상대 경로는 cwd 밖으로 벗어날 수 없고, 절대 경로는 사용자 의도로 허용.
+  - `init_git` *(선택, 기본 `true`)* — scaffold 후 `git init` 실행 여부.
+
+## 안전성 & 신뢰성
+
+- 프로젝트 이름은 파일시스템 조작 전에 regex로 검증, 상대 경로는 working directory를 벗어나면 거부.
+- 다운로드는 30초 timeout, 3회 지수 백오프 retry, 50 MB 크기 제한.
+- 추출은 sibling `.<name>-incomplete-<rand>` 디렉터리에서 진행. 네트워크/손상 아카이브/추출 실패 등 어느 단계든 실패하면 tmp 디렉터리 제거. 최종 경로는 모든 작업이 성공한 뒤에만 atomic `rename`으로 노출.
+- `git init` 실패는 stderr 경고로만 남기고 scaffold 자체는 성공. `.git` 디렉터리 없이도 프로젝트 사용 가능.
 
 ## 라이선스
 

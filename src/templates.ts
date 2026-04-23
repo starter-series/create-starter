@@ -3,6 +3,7 @@ export interface Template {
   name: string;
   description: string;
   repo: string;
+  ref?: string;
   stack: string[];
   category: "mcp" | "package" | "bot" | "app" | "extension" | "deploy";
   defaults: { name: string; description: string };
@@ -134,8 +135,7 @@ export const templates: Template[] = [
   {
     id: "docker-deploy",
     name: "Docker Deploy",
-    description:
-      "Any language, one Dockerfile, GHCR + SSH deploy to any VPS",
+    description: "Any language, one Dockerfile, GHCR + SSH deploy to any VPS",
     repo: `${ORG}/docker-deploy-starter`,
     stack: ["docker", "github-actions"],
     category: "deploy",
@@ -146,4 +146,9 @@ export const templates: Template[] = [
 
 export function getTemplate(id: string): Template | undefined {
   return templates.find((t) => t.id === id);
+}
+
+export function archiveUrl(tmpl: Template): string {
+  const ref = tmpl.ref ?? "main";
+  return `https://github.com/${tmpl.repo}/archive/refs/heads/${ref}.tar.gz`;
 }
