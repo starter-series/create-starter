@@ -44,8 +44,11 @@ server.tool(
       .describe("Template ID (use list_templates to see options)"),
     name: z
       .string()
-      .regex(/^[a-z0-9][a-z0-9._-]*$/, "Must be lowercase kebab-case")
-      .describe("Project name (kebab-case)"),
+      .regex(
+        /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/,
+        "Must be alphanumeric with optional '-' or '_' (no dots, spaces, or metachars)",
+      )
+      .describe("Project name (alphanumeric, '-' or '_' only)"),
     description: z
       .string()
       .optional()

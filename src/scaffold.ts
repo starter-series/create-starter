@@ -92,7 +92,24 @@ export interface ScaffoldResult {
   filesReplaced: number;
 }
 
+// Allow only chars that are safe inside both JS identifiers (after - → _ swap),
+// Python module names (after - → _), package.json "name", and pyproject names.
+// Rejecting everything else avoids corrupting unrelated file content during
+// plain-text substitution (e.g. regex metacharacters, quotes, path separators).
+const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
+
+function validateProjectName(name: string): void {
+  if (!SAFE_NAME.test(name)) {
+    throw new Error(
+      `Invalid project name "${name}": only [A-Za-z0-9_-] are allowed ` +
+        `(so placeholder substitution stays safe).`,
+    );
+  }
+}
+
 export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
+  validateProjectName(opts.projectName);
+
   const dest = resolve(opts.outputDir ?? opts.projectName);
 
   if (existsSync(dest) && readdirSync(dest).length > 0) {
@@ -103,11 +120,12 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
 
   const replacements: Record<string, string> = {};
   const defaultName = opts.template.defaults.name;
+  const defaultSnake = defaultName.replaceAll("-", "_");
+  const projectSnake = opts.projectName.replaceAll("-", "_");
 
   if (opts.projectName !== defaultName) {
     replacements[defaultName] = opts.projectName;
-    replacements[defaultName.replaceAll("-", "_")] =
-      opts.projectName.replaceAll("-", "_");
+    replacements[defaultSnake] = projectSnake;
   }
 
   if (opts.description) {
@@ -117,15 +135,68 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
   const filesReplaced = applyReplacements(dest, replacements);
 
   if (opts.projectName !== defaultName) {
-    const pyDir = join(dest, "src", defaultName.replaceAll("-", "_"));
-    const pyDirNew = join(dest, "src", opts.projectName.replaceAll("-", "_"));
+    const pyDir = join(dest, "src", defaultSnake);
+    const pyDirNew = join(dest, "src", projectSnake);
     if (existsSync(pyDir)) {
       renameSync(pyDir, pyDirNew);
     }
+
+    // The generic text replace already rewrites `my-mcp-server` and
+    // `my_mcp_server` in pyproject.toml. But hatchling's wheel target can
+    // declare `packages = ["src/my_mcp_server"]` explicitly, and the
+    // `[project] name` line is the source of truth for PyPI. Do a second,
+    // targeted pass so these stay consistent even if the template evolves.
+    updatePyproject(join(dest, "pyproject.toml"), {
+      defaultName,
+      projectName: opts.projectName,
+      defaultSnake,
+      projectSnake,
+    });
   }
 
   rmSync(join(dest, ".git"), { recursive: true, force: true });
   execSync("git init", { cwd: dest, stdio: "ignore" });
 
   return { path: dest, filesReplaced };
+}
+
+function updatePyproject(
+  path: string,
+  names: {
+    defaultName: string;
+    projectName: string;
+    defaultSnake: string;
+    projectSnake: string;
+  },
+): void {
+  if (!existsSync(path)) return;
+  let content: string;
+  try {
+    content = readFileSync(path, "utf-8");
+  } catch {
+    return;
+  }
+  const before = content;
+
+  // [project] name = "..."
+  content = content.replace(
+    /^(\s*name\s*=\s*")([^"]+)(")/m,
+    (_m, p1: string, cur: string, p3: string) =>
+      cur === names.defaultName ? `${p1}${names.projectName}${p3}` : _m,
+  );
+
+  // [tool.hatch.build.targets.wheel] packages = [...] — rewrite any entry
+  // referencing the old snake_case package dir.
+  content = content.replaceAll(
+    `"src/${names.defaultSnake}"`,
+    `"src/${names.projectSnake}"`,
+  );
+  content = content.replaceAll(
+    `'src/${names.defaultSnake}'`,
+    `'src/${names.projectSnake}'`,
+  );
+
+  if (content !== before) {
+    writeFileSync(path, content, "utf-8");
+  }
 }
