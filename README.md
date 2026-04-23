@@ -10,14 +10,14 @@
 
 It runs in three modes — pick whichever matches your workflow.
 
-- **CLI** — `npx create-starter my-bot --template discord-bot` in any terminal.
+- **CLI** — `npx @starter-series/create my-bot --template discord-bot` in any terminal.
 - **MCP server** — any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, Windsurf, …) can call `list_templates` and `create_project`.
 - **Claude Code skill** — the bundled `skill/SKILL.md` lets Claude Code drive scaffolding conversationally.
 
 ## Quick start — CLI
 
 ```bash
-npx create-starter my-bot --template discord-bot
+npx @starter-series/create my-bot --template discord-bot
 # or, after cloning and building:
 node dist/index.js my-bot --template discord-bot
 ```

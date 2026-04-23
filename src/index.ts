@@ -8,7 +8,7 @@ import { scaffold } from "./scaffold.js";
 import { getTemplate, templates } from "./templates.js";
 import { runCli } from "./cli.js";
 
-const PKG_VERSION = "0.2.0";
+const PKG_VERSION = "0.3.0";
 
 async function runMcpServer(): Promise<void> {
   const server = new McpServer({

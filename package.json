@@ -1,6 +1,6 @@
 {
-  "name": "create-starter",
-  "version": "0.2.0",
+  "name": "@starter-series/create",
+  "version": "0.3.0",
   "description": "Scaffold projects from the Starter Series templates — MCP server, Claude Code skill, and CLI",
   "type": "module",
   "bin": {
