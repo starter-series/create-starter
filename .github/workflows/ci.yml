@@ -41,6 +41,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify package-lock.json is in sync with package.json
+        run: |
+          # Common Dependabot footgun: package.json edited without a matching
+          # lockfile update (or vice versa). `npm install --package-lock-only`
+          # rewrites package-lock.json from package.json without touching
+          # node_modules; if it produces a diff, the two were out of sync.
+          npm install --package-lock-only --ignore-scripts
+          if ! git diff --exit-code -- package-lock.json; then
+            echo "::error::package-lock.json is out of sync with package.json."
+            echo "Run 'npm install' locally and commit the updated lockfile."
+            exit 1
+          fi
+
       - name: Check licenses
         run: npx --yes license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
 

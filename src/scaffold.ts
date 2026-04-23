@@ -160,7 +160,7 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
   return { path: dest, filesReplaced };
 }
 
-function updatePyproject(
+export function updatePyproject(
   path: string,
   names: {
     defaultName: string;
