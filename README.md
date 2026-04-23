@@ -8,11 +8,12 @@
 
 `create-starter` downloads a Starter Series template, substitutes placeholders (name, description), handles Python package renames (pyproject + src dir), and runs `git init`. Input is validated by Zod before any filesystem change, extraction happens in a sibling tmp dir so failures never leave half-scaffolded output, and downloads have retry + timeout + size limits.
 
-It runs in three modes — pick whichever matches your workflow.
+It runs in four modes — pick whichever matches your workflow.
 
+- **Claude Code plugin** — `/plugin marketplace add starter-series/create-starter` then `/plugin install create-starter@starter-series`. Ships the MCP server and skill together.
 - **CLI** — `npx @starter-series/create my-bot --template discord-bot` in any terminal.
 - **MCP server** — any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, Windsurf, …) can call `list_templates` and `create_project`.
-- **Claude Code skill** — the bundled `skill/SKILL.md` lets Claude Code drive scaffolding conversationally.
+- **Claude Code skill** — the bundled `skills/create/SKILL.md` guides Claude Code conversationally (auto-installed with the plugin).
 
 ## Quick start — CLI
 
@@ -91,13 +92,26 @@ Then ask your agent: *"Use create-starter to scaffold a new discord bot named `m
 
 > The binary speaks **MCP stdio** when called with no extra arguments, and switches to **CLI mode** when given any positional argument or flag. Both modes share the same scaffolding engine.
 
-## Use as Claude Code skill
+## Use as Claude Code plugin
 
-```bash
-ln -s "$(pwd)/skill" ~/.claude/skills/create-starter
+The plugin bundles both the MCP server and the `create` skill — one install wires them up together.
+
+From the Claude Code REPL:
+
+```
+/plugin marketplace add starter-series/create-starter
+/plugin install create-starter@starter-series
 ```
 
-Then in Claude Code: mention the template naturally, or invoke the skill by name — it guides Claude to call the MCP tools instead of shelling out to `curl` / `tar`.
+Then ask Claude: *"scaffold a new discord bot named `my-bot`"* and the `create-starter:create` skill guides the conversation into the MCP tools.
+
+For local development (no marketplace round-trip):
+
+```bash
+claude --plugin-dir /path/to/create-starter
+```
+
+Point at a git clone so edits in `skills/create/SKILL.md` or `dist/index.js` take effect the moment the session starts.
 
 ## Tools
 

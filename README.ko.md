@@ -8,11 +8,12 @@
 
 `create-starter`는 Starter Series 템플릿을 다운로드하고, 플레이스홀더(name, description)를 치환하며, Python 패키지 리네임(pyproject + src 디렉터리)을 처리하고 `git init`까지 수행합니다. 파일시스템 조작 전에 Zod로 입력을 검증하고, 추출은 sibling tmp 디렉터리에서 진행되어 실패해도 중간 결과물이 남지 않으며, 다운로드는 retry + timeout + 크기 제한을 가집니다.
 
-세 가지 모드로 동작 — 워크플로우에 맞게 선택:
+네 가지 모드로 동작 — 워크플로우에 맞게 선택:
 
+- **Claude Code 플러그인** — `/plugin marketplace add starter-series/create-starter` 후 `/plugin install create-starter@starter-series`. MCP 서버 + 스킬 한 방에 설치.
 - **CLI** — 아무 터미널에서 `npx @starter-series/create my-bot --template discord-bot`.
 - **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Claude Code, Cursor, Windsurf 등)가 `list_templates`, `create_project` 툴 호출.
-- **Claude Code 스킬** — 번들된 `skill/SKILL.md`로 Claude Code가 대화식 스캐폴딩.
+- **Claude Code 스킬** — 번들된 `skills/create/SKILL.md`로 Claude Code가 대화식 스캐폴딩 (플러그인 설치 시 자동 포함).
 
 ## 빠른 시작 — CLI
 
@@ -91,13 +92,26 @@ Node.js ≥20 필요.
 
 > 추가 인자 없이 호출하면 **MCP stdio** 모드, positional 인자나 플래그가 있으면 **CLI** 모드로 전환됩니다. 두 모드는 동일 스캐폴딩 엔진을 공유.
 
-## Claude Code 스킬로 사용
+## Claude Code 플러그인으로 사용
 
-```bash
-ln -s "$(pwd)/skill" ~/.claude/skills/create-starter
+플러그인 하나를 설치하면 MCP 서버와 `create` 스킬이 함께 활성화됩니다.
+
+Claude Code REPL에서:
+
+```
+/plugin marketplace add starter-series/create-starter
+/plugin install create-starter@starter-series
 ```
 
-Claude Code에서 템플릿을 자연어로 언급하거나 스킬 이름을 직접 부르면, Claude가 `curl`/`tar` 대신 MCP 툴을 호출하도록 유도됩니다.
+이후 Claude에게 "`my-bot` 디스코드 봇 스캐폴딩 해줘"처럼 요청하면 `create-starter:create` 스킬이 MCP 툴 호출을 안내합니다.
+
+로컬 개발(마켓플레이스 왕복 없이):
+
+```bash
+claude --plugin-dir /path/to/create-starter
+```
+
+git clone 경로를 그대로 지정하면 `skills/create/SKILL.md`나 `dist/index.js` 수정이 세션 시작 시 바로 반영됩니다.
 
 ## 툴
 

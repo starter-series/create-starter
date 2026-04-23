@@ -1,0 +1,13 @@
+{
+  "name": "starter-series",
+  "owner": {
+    "name": "heznpc"
+  },
+  "plugins": [
+    {
+      "name": "create-starter",
+      "source": ".",
+      "description": "Scaffold projects from the Starter Series templates — MCP server and Claude Code skill in one plugin."
+    }
+  ]
+}
