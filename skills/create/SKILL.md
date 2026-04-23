@@ -1,5 +1,5 @@
 ---
-name: create-starter
+name: create
 description: Scaffold a new project from the Starter Series templates (MCP server, Discord/Telegram bot, VS Code / browser extension, Electron, React Native, Cloudflare Pages, npm package, Docker deploy).
 ---
 

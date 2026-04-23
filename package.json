@@ -38,7 +38,9 @@
   "author": "heznpc",
   "files": [
     "dist",
-    "skill",
+    "skills",
+    ".claude-plugin",
+    ".mcp.json",
     "README.md",
     "README.ko.md",
     "LICENSE"

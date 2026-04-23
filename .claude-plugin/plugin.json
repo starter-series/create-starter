@@ -1,0 +1,19 @@
+{
+  "name": "create-starter",
+  "version": "0.3.0",
+  "description": "Scaffold projects from the Starter Series templates — MCP server and Claude Code skill in one plugin.",
+  "author": {
+    "name": "heznpc"
+  },
+  "homepage": "https://github.com/starter-series/create-starter",
+  "repository": "https://github.com/starter-series/create-starter",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "starter",
+    "scaffold",
+    "template",
+    "claude-code",
+    "bootstrap"
+  ]
+}
