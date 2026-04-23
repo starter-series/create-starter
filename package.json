@@ -1,7 +1,8 @@
 {
   "name": "@starter-series/create",
   "version": "0.3.0",
-  "description": "Scaffold projects from the Starter Series templates — MCP server, Claude Code skill, and CLI",
+  "description": "Scaffold projects from the Starter Series templates \u2014 MCP server, Claude Code skill, and CLI",
+  "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
     "create-starter": "dist/index.js"
@@ -43,7 +44,8 @@
     ".mcp.json",
     "README.md",
     "README.ko.md",
-    "LICENSE"
+    "LICENSE",
+    "server.json"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

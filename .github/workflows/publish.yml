@@ -44,6 +44,25 @@ jobs:
             exit 1
           fi
 
+      - name: Verify server.json version matches package.json
+        run: |
+          if [ ! -f server.json ]; then
+            echo "::error::server.json not found at repo root"
+            exit 1
+          fi
+          SERVER_VERSION=$(node -e "console.log(require('./server.json').version)")
+          SERVER_NAME=$(node -e "console.log(require('./server.json').name)")
+          PKG_MCP_NAME=$(node -e "console.log(require('./package.json').mcpName || '')")
+          if [ "$SERVER_VERSION" != "${{ steps.pkg.outputs.version }}" ]; then
+            echo "::error::server.json version ($SERVER_VERSION) does not match package.json version (${{ steps.pkg.outputs.version }})"
+            exit 1
+          fi
+          if [ "$SERVER_NAME" != "$PKG_MCP_NAME" ]; then
+            echo "::error::server.json name ($SERVER_NAME) does not match package.json mcpName ($PKG_MCP_NAME)"
+            exit 1
+          fi
+          echo "server.json verified: $SERVER_NAME@$SERVER_VERSION"
+
       - uses: actions/setup-node@v6
         with:
           node-version: 22
