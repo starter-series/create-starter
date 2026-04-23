@@ -96,9 +96,9 @@ export interface ScaffoldResult {
 // Python module names (after - → _), package.json "name", and pyproject names.
 // Rejecting everything else avoids corrupting unrelated file content during
 // plain-text substitution (e.g. regex metacharacters, quotes, path separators).
-const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
+export const SAFE_NAME = /^[A-Za-z0-9_-]+$/;
 
-function validateProjectName(name: string): void {
+export function validateProjectName(name: string): void {
   if (!SAFE_NAME.test(name)) {
     throw new Error(
       `Invalid project name "${name}": only [A-Za-z0-9_-] are allowed ` +

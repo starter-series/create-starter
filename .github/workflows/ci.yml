@@ -50,6 +50,9 @@ jobs:
       - name: Build (tsc — also typechecks)
         run: npm run build
 
+      - name: Unit tests
+        run: npm test
+
       - name: Verify CLI bin exists
         run: test -f dist/index.js
 

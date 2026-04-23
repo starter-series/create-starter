@@ -14,16 +14,31 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --test --import tsx tests/*.test.ts"
   },
-  "keywords": ["mcp", "starter", "scaffold", "template", "claude-code"],
+  "keywords": [
+    "mcp",
+    "starter",
+    "scaffold",
+    "template",
+    "claude-code"
+  ],
   "license": "MIT",
+  "files": [
+    "dist",
+    "skill",
+    "README.md",
+    "README.ko.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   }
 }
