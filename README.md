@@ -13,6 +13,28 @@ Works in two modes:
 - **MCP server** — any MCP-compatible agent (Claude Desktop, Cursor, etc.) can call the `list_templates` and `create_project` tools.
 - **Claude Code skill** — the bundled `skill/SKILL.md` lets Claude Code drive scaffolding conversationally.
 
+## Usage
+
+`create-starter` is driven by an agent (Claude Code, Claude Desktop, Cursor, …), not by a typed prompt flow. Once the MCP server is registered (see [Use as MCP server](#use-as-mcp-server)), invocation looks like this:
+
+```
+You › Use create-starter to scaffold a discord bot called my-bot.
+
+Agent › (calls list_templates, then create_project)
+        Project "my-bot" created from Discord Bot
+          Path: /Users/you/code/my-bot
+          Files customized: 7
+
+        Next steps:
+          cd my-bot
+          npm install
+          npm run dev
+```
+
+The agent confirms the template ID and project name, calls `create_project`, and you `cd` into the scaffolded directory. No separate prompt flow — the agent handles the dialogue.
+
+> The `create-starter` binary itself speaks the MCP stdio protocol, so running it directly (e.g. `npx create-starter`) without an MCP client will not print an interactive menu.
+
 ## Available templates
 
 | ID | Stack |

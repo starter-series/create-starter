@@ -13,6 +13,28 @@
 - **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Cursor 등)가 `list_templates`와 `create_project` 툴을 호출합니다.
 - **Claude Code 스킬** — 번들된 `skill/SKILL.md`로 Claude Code가 대화식으로 스캐폴딩을 구동합니다.
 
+## 사용 예시
+
+`create-starter`는 타이핑 기반 프롬프트가 아니라 에이전트(Claude Code, Claude Desktop, Cursor, …)가 구동합니다. MCP 서버를 등록([MCP 서버로 사용](#mcp-서버로-사용) 참고)한 뒤의 호출 흐름:
+
+```
+You   › create-starter로 my-bot이라는 discord 봇 스캐폴딩해줘.
+
+Agent › (list_templates 호출 → create_project 호출)
+        Project "my-bot" created from Discord Bot
+          Path: /Users/you/code/my-bot
+          Files customized: 7
+
+        Next steps:
+          cd my-bot
+          npm install
+          npm run dev
+```
+
+에이전트가 템플릿 ID와 프로젝트 이름을 확인하고 `create_project`를 호출하면, 사용자는 생성된 디렉터리로 `cd`만 하면 됩니다. 별도 프롬프트 UI 없이 에이전트가 대화를 담당합니다.
+
+> `create-starter` 바이너리 자체는 MCP stdio 프로토콜을 말하므로, MCP 클라이언트 없이 `npx create-starter`처럼 직접 실행하면 인터랙티브 메뉴가 뜨지 않습니다.
+
 ## 사용 가능한 템플릿
 
 | ID | 스택 |
