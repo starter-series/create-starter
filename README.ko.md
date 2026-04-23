@@ -10,14 +10,14 @@
 
 세 가지 모드로 동작 — 워크플로우에 맞게 선택:
 
-- **CLI** — 아무 터미널에서 `npx create-starter my-bot --template discord-bot`.
+- **CLI** — 아무 터미널에서 `npx @starter-series/create my-bot --template discord-bot`.
 - **MCP 서버** — MCP 호환 에이전트(Claude Desktop, Claude Code, Cursor, Windsurf 등)가 `list_templates`, `create_project` 툴 호출.
 - **Claude Code 스킬** — 번들된 `skill/SKILL.md`로 Claude Code가 대화식 스캐폴딩.
 
 ## 빠른 시작 — CLI
 
 ```bash
-npx create-starter my-bot --template discord-bot
+npx @starter-series/create my-bot --template discord-bot
 # 또는 clone/build 후 직접:
 node dist/index.js my-bot --template discord-bot
 ```
