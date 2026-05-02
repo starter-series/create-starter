@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { isAbsolute, normalize } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { extract } from "tar";
@@ -9,7 +10,8 @@ export type DownloadErrorCode =
   | "TIMEOUT"
   | "SIZE_EXCEEDED"
   | "NETWORK"
-  | "ABORTED";
+  | "ABORTED"
+  | "UNSAFE_ENTRY";
 
 export class DownloadError extends Error {
   readonly code: DownloadErrorCode;
@@ -135,6 +137,31 @@ async function fetchOnce(args: FetchOnceArgs): Promise<Buffer> {
   }
 }
 
+/**
+ * Reject tar entries that would escape `destDir` (zip-slip / path-traversal).
+ *
+ * `tar.extract`'s `strip: 1` peels the leading "<repo>-<sha>/" segment off
+ * GitHub archives, so by the time `filter` sees a path it should be a
+ * relative path inside the project. Anything else — absolute paths, paths
+ * containing `..`, Windows drive letters — is a malicious or corrupt entry.
+ *
+ * `tar.extract` also rejects symlinks/hardlinks that target outside cwd by
+ * default; we keep that behavior and add an explicit path check on top.
+ */
+export function isSafeTarEntry(path: string): boolean {
+  if (!path) return false;
+  if (isAbsolute(path)) return false;
+  // Reject Windows drive letters that look relative on POSIX (e.g. "C:foo").
+  if (/^[A-Za-z]:/.test(path)) return false;
+  // `normalize` collapses `a/../b` → `b`. If the result still starts with
+  // `..` it means the entry escapes cwd.
+  const normalized = normalize(path);
+  if (normalized.startsWith("..") || normalized.includes(`${"/"}..${"/"}`)) {
+    return false;
+  }
+  return true;
+}
+
 export async function extractTarball(
   tarball: Buffer,
   destDir: string,
@@ -142,16 +169,32 @@ export async function extractTarball(
 ): Promise<number> {
   await mkdir(destDir, { recursive: true });
   let fileCount = 0;
+  let rejected: string | null = null;
   await pipeline(
     Readable.from(tarball),
     extract({
       cwd: destDir,
       strip: 1,
+      filter: (path) => {
+        if (!isSafeTarEntry(path)) {
+          // Capture the first offender so we can surface it in the error
+          // instead of silently skipping (which is what `filter` does).
+          rejected ??= path;
+          return false;
+        }
+        return true;
+      },
       onentry: () => {
         fileCount++;
       },
     }),
   );
+  if (rejected !== null) {
+    throw new DownloadError(
+      `tarball contains unsafe entry "${rejected}" (absolute path or directory traversal)`,
+      "UNSAFE_ENTRY",
+    );
+  }
   logger?.debug(`extracted ${fileCount} entries to ${destDir}`);
   return fileCount;
 }
