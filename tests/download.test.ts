@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { DownloadError, fetchTarball } from "../src/download.ts";
+import { DownloadError, fetchTarball, isSafeTarEntry } from "../src/download.ts";
 
 function makeResponse(status: number, body: Uint8Array, contentLength?: number): Response {
   const stream = new ReadableStream({
@@ -111,4 +111,42 @@ describe("fetchTarball", () => {
         err instanceof DownloadError && err.code === "TIMEOUT",
     );
   });
+});
+
+describe("isSafeTarEntry (zip-slip / path-traversal guard)", () => {
+  const safe = [
+    "package.json",
+    "src/index.ts",
+    "deeply/nested/file.txt",
+    "with-dashes/and_underscores.md",
+    "trailing/slash/", // tar can emit directory entries
+  ];
+  const unsafe = [
+    "",
+    "/etc/passwd",
+    "/absolute/path",
+    "../escape",
+    "ok/then/../../../escape", // collapses to ../escape — escapes cwd
+    "C:windows", // Windows drive letter
+    "C:\\Users\\Public",
+    "..",
+    "../",
+    "../../",
+  ];
+
+  it("accepts paths that resolve back inside cwd even with .. mid-path", () => {
+    // `ok/then/../../escape` → `escape` (still inside cwd) — safe.
+    assert.equal(isSafeTarEntry("ok/then/../../escape"), true);
+  });
+
+  for (const p of safe) {
+    it(`accepts ${JSON.stringify(p)}`, () => {
+      assert.equal(isSafeTarEntry(p), true);
+    });
+  }
+  for (const p of unsafe) {
+    it(`rejects ${JSON.stringify(p)}`, () => {
+      assert.equal(isSafeTarEntry(p), false);
+    });
+  }
 });
