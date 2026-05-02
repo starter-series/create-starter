@@ -1,0 +1,77 @@
+name: Update CHANGELOG.md
+
+# Prepend the GitHub Release body to CHANGELOG.md when a release is
+# published. Released-bearing repos (npm/PyPI/marketplace/GHCR) all use
+# softprops/action-gh-release with `generate_release_notes: true` in their
+# CD workflow, which means GitHub's auto-generated notes (PR titles since
+# the previous tag) are the authoritative changelog. This workflow simply
+# mirrors that into a checked-in CHANGELOG.md so people who don't browse
+# Releases still see the history.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepend release entry to CHANGELOG.md
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          NAME: ${{ github.event.release.name }}
+          BODY: ${{ github.event.release.body }}
+          DATE: ${{ github.event.release.published_at }}
+        run: |
+          set -euo pipefail
+          [ -f CHANGELOG.md ] || { echo "::warning::CHANGELOG.md missing — skipping"; exit 0; }
+          DAY="${DATE:0:10}"
+          HEADER="## [${NAME:-$TAG}] - $DAY"
+
+          # Write the body to a tmp file so we don't have to inline-escape it.
+          printf '%s\n' "$BODY" > /tmp/release-body
+
+          if grep -q '^## \[Unreleased\]' CHANGELOG.md; then
+            # Insert after the "## [Unreleased]" line + its blank line, so the
+            # Unreleased section stays at the top and manual in-flight notes
+            # are preserved.
+            awk -v hdr="$HEADER" -v body_file="/tmp/release-body" '
+              BEGIN { inserted = 0 }
+              {
+                print
+                if (!inserted && /^## \[Unreleased\]/) {
+                  getline blank
+                  print blank
+                  print hdr
+                  print ""
+                  while ((getline line < body_file) > 0) print line
+                  close(body_file)
+                  print ""
+                  inserted = 1
+                }
+              }
+            ' CHANGELOG.md > CHANGELOG.md.new
+          else
+            { echo "$HEADER"; echo; cat /tmp/release-body; echo; cat CHANGELOG.md; } > CHANGELOG.md.new
+          fi
+          mv CHANGELOG.md.new CHANGELOG.md
+
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md — release body was empty?"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): record ${{ github.event.release.tag_name }} [skip ci]"
+          git push
