@@ -150,3 +150,112 @@ describe("isSafeTarEntry (zip-slip / path-traversal guard)", () => {
     });
   }
 });
+
+// End-to-end: build a malicious tarball in memory, run extractTarball
+// against a tmp dir, assert the bad entry was rejected and produced a
+// DownloadError UNSAFE_ENTRY.
+//
+// Crafting a tar header by hand is fragile (checksum / GNU ustar magic),
+// so we keep this scaffold marked as a TODO and rely on `isSafeTarEntry`
+// unit tests above to cover policy. A future improvement: use a fixture
+// tarball checked into tests/fixtures/ instead of synthesizing here.
+describe.skip("extractTarball — zip-slip end-to-end (TODO: fixture tarball)", () => {
+  it("rejects an entry whose path resolves outside cwd", async () => {
+    const { mkdtemp, rm, readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { create } = await import("tar");
+    const { extractTarball, DownloadError } = await import(
+      "../src/download.ts"
+    );
+
+    // The starter's archives have a top-level <repo>-<sha>/ that strip:1
+    // peels off; mimic that and sneak a `..` entry below it.
+    const stage = await mkdtemp(join(tmpdir(), "tar-stage-"));
+    const repoRoot = join(stage, "repo-abc");
+    const innerDir = join(repoRoot, "inner");
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(innerDir, { recursive: true });
+    await writeFile(join(repoRoot, "ok.txt"), "fine\n");
+    // node-tar follows symlinks during create; create a regular file with
+    // a relative path that, after strip:1, resolves outside cwd.
+    // We do this by creating the malicious file under a nested name and
+    // then editing the tar manifest at create time via portable=false +
+    // explicit entry name override is not directly exposed. Instead, we
+    // construct the tarball as a Buffer with an entry name we control.
+
+    // Build a tar.gz buffer using node-tar's filesystem mode. The
+    // simplest portable trick: create a directory tree with a `..` link
+    // is not allowed by the OS. Use the API form: tar.create accepts a
+    // filter, but for a *malicious entry* we need to pack manually. The
+    // most pragmatic approach is to write bytes representing a tar with
+    // a known offending header.
+    //
+    // Use `tar.c` with `prefix: "../escape"` won't work either. Instead
+    // we leverage the real-world threat: a tarball that includes
+    // `repo-abc/../escape.txt` as an entry name. We build it by piping
+    // through tar.Pack and feeding a header directly.
+    const { Pack, Header } = (await import("tar")) as unknown as {
+      Pack: new () => NodeJS.ReadWriteStream;
+      Header: new (data: Record<string, unknown>) => {
+        encode(): Buffer | null;
+        block: Buffer;
+      };
+    };
+
+    // Manually craft a 1024-byte tar entry with a traversal path.
+    function craftTar(entryName: string, body: string): Buffer {
+      const ENTRY_SIZE = 512;
+      const header = Buffer.alloc(ENTRY_SIZE, 0);
+      const nameBuf = Buffer.from(entryName, "utf-8");
+      nameBuf.copy(header, 0, 0, Math.min(nameBuf.length, 100));
+      header.write("0000644", 100, 7, "ascii"); // mode
+      header.write("0000000", 108, 7, "ascii"); // uid
+      header.write("0000000", 116, 7, "ascii"); // gid
+      const sizeOctal = body.length.toString(8).padStart(11, "0");
+      header.write(sizeOctal, 124, 11, "ascii");
+      header.write("00000000000", 136, 11, "ascii"); // mtime
+      header.write("        ", 148, 8, "ascii"); // checksum placeholder
+      header[156] = 0x30; // typeflag '0' = regular file
+      header.write("ustar  ", 257, 7, "ascii"); // magic + version (gnu-ish)
+      // Compute checksum
+      let sum = 0;
+      for (let i = 0; i < ENTRY_SIZE; i++) sum += header[i];
+      header.write(sum.toString(8).padStart(6, "0") + "\0 ", 148, 8, "ascii");
+
+      const payload = Buffer.alloc(Math.ceil(body.length / 512) * 512, 0);
+      Buffer.from(body, "utf-8").copy(payload);
+
+      const trailer = Buffer.alloc(1024, 0);
+      return Buffer.concat([header, payload, trailer]);
+    }
+
+    // strip:1 will peel "repo-abc/" → entry path becomes "../escape.txt"
+    const tarBuf = craftTar("repo-abc/../escape.txt", "owned\n");
+
+    // gzip it (extractTarball expects gz)
+    const { gzipSync } = await import("node:zlib");
+    const tgz = gzipSync(tarBuf);
+
+    const dest = await mkdtemp(join(tmpdir(), "tar-dest-"));
+    let caught: DownloadError | null = null;
+    try {
+      await extractTarball(tgz, dest);
+    } catch (err) {
+      if (err instanceof DownloadError) caught = err;
+      else throw err;
+    }
+
+    assert.ok(caught !== null, "expected DownloadError");
+    assert.equal(caught!.code, "UNSAFE_ENTRY");
+    // Confirm the dest dir does NOT contain the leaked file.
+    const entries = await readdir(dest);
+    assert.deepEqual(
+      entries.filter((e) => e.includes("escape")),
+      [],
+    );
+
+    await rm(stage, { recursive: true, force: true });
+    await rm(dest, { recursive: true, force: true });
+  });
+});
