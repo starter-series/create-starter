@@ -13,5 +13,3 @@ release feed without duplicating maintenance.
 
 ## [Unreleased]
 
-<!-- Future entries land here. Manual edits are welcome — the workflow
-     prepends BELOW this header so it never overwrites in-flight notes. -->
