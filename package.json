@@ -1,7 +1,7 @@
 {
   "name": "@starter-series/create",
-  "version": "0.3.0",
-  "description": "Scaffold projects from the Starter Series templates \u2014 MCP server, Claude Code skill, and CLI",
+  "version": "0.4.0",
+  "description": "Scaffold and audit Starter Series projects \u2014 MCP server, Claude Code skill, and CLI with release/CD/security audit primitives",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
