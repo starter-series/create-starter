@@ -65,6 +65,56 @@ jobs:
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("recognizes manual gitleaks install with SHA256 pin as present", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+jobs:
+  scan:
+    steps:
+      - env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v\${GITLEAKS_VERSION}/gitleaks_\${GITLEAKS_VERSION}_linux_x64.tar.gz -o /tmp/g.tgz
+          /tmp/gitleaks detect --source . --verbose
+`,
+      );
+      const r = await auditSecurity(dir);
+      const g = r.checks.find((c) => c.name === "gitleaks")!;
+      assert.equal(g.status, "present");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not flag npm install --package-lock-only as missing --ignore-scripts", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+jobs:
+  lockfile-check:
+    steps:
+      - run: npm ci --ignore-scripts
+      - run: npm install --package-lock-only --ignore-scripts
+`,
+      );
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((c) => c.name === "ignore-scripts")!;
+      assert.equal(c.status, "present");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("auditSecurity — flags missing checks", () => {
