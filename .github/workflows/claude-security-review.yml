@@ -1,0 +1,43 @@
+name: AI Security Review
+
+on:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      # Gate the job on the secret being set so forks / fresh clones don't
+      # red-fail. The `secrets` context can't be used directly in `if:`, so we
+      # route through a step output. When CLAUDE_API_KEY is unset, the job
+      # emits a notice and skips the actual analysis steps.
+      - name: Check CLAUDE_API_KEY presence
+        id: gate
+        env:
+          API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_KEY:-}" ]; then
+            echo "::notice::CLAUDE_API_KEY secret is not set — skipping AI security review. Set the secret in repo settings to enable."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      # Pinned to a specific commit SHA. Bumped via Dependabot (group: actions).
+      - name: AI security review
+        if: steps.gate.outputs.skip == 'false'
+        uses: anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
