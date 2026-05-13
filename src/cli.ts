@@ -113,70 +113,35 @@ function readVersion(): string {
   }
 }
 
-async function runAudit(argv: string[]): Promise<number> {
-  // argv excludes the leading "audit" subcommand
+/**
+ * Shared shell for every `audit*` subcommand: parses the single optional
+ * positional path, defers to the audit function, prints the formatted report,
+ * and maps the verdict to an exit code. Each subcommand is a one-liner around
+ * this helper.
+ */
+async function runAuditSubcommand<R>(
+  argv: string[],
+  name: string,
+  fn: (path: string) => Promise<R>,
+  format: (report: R) => string,
+  isFailure: (report: R) => boolean,
+): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
     process.stdout.write(HELP);
     return 0;
   }
-  const extra = argv.filter((a) => !a.startsWith("-"));
-  if (extra.length > 1) {
+  const extras = argv.filter((a) => !a.startsWith("-"));
+  if (extras.length > 1) {
     process.stderr.write(
-      `error: 'audit' accepts at most one path, got: ${extra.join(" ")}\n`,
+      `error: '${name}' accepts at most one path, got: ${extras.join(" ")}\n`,
     );
     return 2;
   }
-  const path = extra[0] ?? process.cwd();
+  const path = extras[0] ?? process.cwd();
   try {
-    const report = await auditRelease(path);
-    process.stdout.write(formatAuditReport(report));
-    return report.shipReady.verdict === "no" ? 1 : 0;
-  } catch (err) {
-    process.stderr.write(`error: ${(err as Error).message}\n`);
-    return 1;
-  }
-}
-
-async function runAuditCd(argv: string[]): Promise<number> {
-  if (argv.includes("-h") || argv.includes("--help")) {
-    process.stdout.write(HELP);
-    return 0;
-  }
-  const extra = argv.filter((a) => !a.startsWith("-"));
-  if (extra.length > 1) {
-    process.stderr.write(
-      `error: 'audit-cd' accepts at most one path, got: ${extra.join(" ")}\n`,
-    );
-    return 2;
-  }
-  const path = extra[0] ?? process.cwd();
-  try {
-    const report = await auditCd(path);
-    process.stdout.write(formatAuditCdReport(report));
-    return report.overall.verdict === "needs-publish" ? 1 : 0;
-  } catch (err) {
-    process.stderr.write(`error: ${(err as Error).message}\n`);
-    return 1;
-  }
-}
-
-async function runAuditSecurity(argv: string[]): Promise<number> {
-  if (argv.includes("-h") || argv.includes("--help")) {
-    process.stdout.write(HELP);
-    return 0;
-  }
-  const extra = argv.filter((a) => !a.startsWith("-"));
-  if (extra.length > 1) {
-    process.stderr.write(
-      `error: 'audit-security' accepts at most one path, got: ${extra.join(" ")}\n`,
-    );
-    return 2;
-  }
-  const path = extra[0] ?? process.cwd();
-  try {
-    const report = await auditSecurity(path);
-    process.stdout.write(formatAuditSecurityReport(report));
-    return report.overall.verdict === "soft" ? 1 : 0;
+    const report = await fn(path);
+    process.stdout.write(format(report));
+    return isFailure(report) ? 1 : 0;
   } catch (err) {
     process.stderr.write(`error: ${(err as Error).message}\n`);
     return 1;
@@ -184,15 +149,32 @@ async function runAuditSecurity(argv: string[]): Promise<number> {
 }
 
 export async function runCli(argv: string[]): Promise<number> {
-  // Subcommand: audit
   if (argv[0] === "audit") {
-    return runAudit(argv.slice(1));
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit",
+      auditRelease,
+      formatAuditReport,
+      (r) => r.shipReady.verdict === "no",
+    );
   }
   if (argv[0] === "audit-cd") {
-    return runAuditCd(argv.slice(1));
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit-cd",
+      (p) => auditCd(p),
+      formatAuditCdReport,
+      (r) => r.overall.verdict === "needs-publish",
+    );
   }
   if (argv[0] === "audit-security") {
-    return runAuditSecurity(argv.slice(1));
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit-security",
+      auditSecurity,
+      formatAuditSecurityReport,
+      (r) => r.overall.verdict === "soft",
+    );
   }
 
   let parsed: Parsed;
