@@ -63,6 +63,10 @@ Environment
 
 `create-starter --list` (CLI) 또는 `list_templates` (MCP)로 실시간 목록 확인.
 
+## Lovable / Bolt / v0에서 졸업하기
+
+바이브 코딩 플랫폼에서 동작하는 앱을 GitHub Actions + 자체 deploy target으로 졸업시키고 싶나? [`docs/graduation-from-vibe-coding.ko.md`](docs/graduation-from-vibe-coding.ko.md) ([English](docs/graduation-from-vibe-coding.md)) — `audit`, `audit-cd`, `audit-security`로 레포를 진단하고, 앱 코드는 건드리지 않은 채 매칭 starter에서 CI/CD를 이식하는 5단계 경로.
+
 ## 소스에서 설치
 
 ```bash

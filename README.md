@@ -63,6 +63,10 @@ Environment
 
 Run `create-starter --list` (CLI) or call `list_templates` (MCP) for the authoritative, up-to-date list.
 
+## Graduating from Lovable / Bolt / v0
+
+Already have a working app on a vibe-coding platform and want to graduate to GitHub Actions + your own deploy target? Read [`docs/graduation-from-vibe-coding.md`](docs/graduation-from-vibe-coding.md) ([한국어](docs/graduation-from-vibe-coding.ko.md)) — a 5-step path that uses `audit`, `audit-cd`, and `audit-security` to diagnose your repo, then lifts CI/CD from the matching starter without rewriting your app code.
+
 ## Install from source
 
 ```bash
