@@ -141,7 +141,7 @@ io.github.starter-series/create-starter
 
 Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동으로 지정하지 않고 이름만으로 설치할 수 있습니다. Registry 엔트리는 npm 패키지 `@starter-series/create`를 가리키므로, `npx`가 위에서 설명한 동일 stdio 서버를 실행합니다.
 
-소유권 검증: GitHub OIDC 네임스페이스 `io.github.starter-series/*` + npm tarball 검사 (`package.json#mcpName`). 게시 플로우는 [`.github/workflows/publish-mcp-registry.yml`](.github/workflows/publish-mcp-registry.yml) 참고.
+소유권 검증: GitHub OIDC 네임스페이스 `io.github.starter-series/*` + npm tarball 검사 (`package.json#mcpName`). 게시 플로우는 [`.github/workflows/publish-mcp-registry.yml`](https://github.com/starter-series/create-starter/blob/main/.github/workflows/publish-mcp-registry.yml) 참고.
 
 ## 툴
 

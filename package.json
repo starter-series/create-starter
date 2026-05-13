@@ -41,10 +41,13 @@
   "files": [
     "dist",
     "skills",
+    "docs/graduation-from-vibe-coding.md",
+    "docs/graduation-from-vibe-coding.ko.md",
     ".claude-plugin",
     ".mcp.json",
     "README.md",
     "README.ko.md",
+    "CHANGELOG.md",
     "LICENSE",
     "server.json"
   ],
