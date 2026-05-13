@@ -59,5 +59,8 @@
     "@types/tar": "^6.1.13",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
+  },
+  "overrides": {
+    "fast-uri": "^3.1.2"
   }
 }
