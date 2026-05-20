@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+import { parseGitHubRemote, safeReadText } from "./audit-helpers.js";
 
 export type SecurityCheckName =
   | "gitleaks"
@@ -27,24 +28,6 @@ export interface AuditSecurityReport {
   checks: SecurityCheckResult[];
   summary: { present: number; missing: number; partial: number };
   overall: { verdict: "hardened" | "needs-attention" | "soft"; issues: string[] };
-}
-
-// ---- fs helpers ----
-
-function safeReadText(path: string): string | null {
-  try {
-    return readFileSync(path, "utf-8");
-  } catch {
-    return null;
-  }
-}
-
-function safeReadJson(path: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
 }
 
 function listWorkflows(repoPath: string): { file: string; content: string }[] {
@@ -300,8 +283,7 @@ function tryGitRemote(repoPath: string): string | null {
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    const m = url.match(/github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
-    return m ? `${m[1]}/${m[2]}` : null;
+    return parseGitHubRemote(url);
   } catch {
     return null;
   }
@@ -365,9 +347,6 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
   if (summary.missing === 0 && summary.partial === 0) verdict = "hardened";
   else if (summary.missing <= 2) verdict = "needs-attention";
   else verdict = "soft";
-
-  // Silence unused import warning
-  void safeReadJson;
 
   return {
     repoPath: abs,

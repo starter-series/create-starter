@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
+import { parseGitHubRemote, semverCompare, tryGit } from "./audit-helpers.js";
+import { extractStarterSignals } from "./starter-detect.js";
 
 export type DestinationName =
   | "npm"
@@ -43,56 +45,6 @@ export interface AuditCdOptions {
   fetch?: typeof fetch;
   /** Per-request timeout in ms. Default 5000. */
   timeoutMs?: number;
-}
-
-// ---- fs helpers (duplicated minimally to keep modules independent) ----
-
-function safeReadJson(path: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function safeReadText(path: string): string | null {
-  try {
-    return readFileSync(path, "utf-8");
-  } catch {
-    return null;
-  }
-}
-
-function tryGit(repoPath: string, args: string[]): string | null {
-  try {
-    return execFileSync("git", args, {
-      cwd: repoPath,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return null;
-  }
-}
-
-function semverCompare(a: string, b: string): number {
-  const norm = (s: string) =>
-    s.replace(/^v/, "").split(/[.\-+]/).map((p) => {
-      const n = Number(p);
-      return Number.isFinite(n) ? n : p;
-    });
-  const aa = norm(a);
-  const bb = norm(b);
-  for (let i = 0; i < Math.max(aa.length, bb.length); i++) {
-    const av = aa[i] ?? 0;
-    const bv = bb[i] ?? 0;
-    if (av === bv) continue;
-    if (typeof av === "number" && typeof bv === "number") {
-      return av < bv ? -1 : 1;
-    }
-    return String(av) < String(bv) ? -1 : 1;
-  }
-  return 0;
 }
 
 function classifyDrift(local: string | null, published: string | null): CdStatus {
@@ -379,11 +331,8 @@ function probeGithubReleases(
 ): DestinationReport | null {
   const remote = tryGit(repoPath, ["config", "--get", "remote.origin.url"]);
   if (!remote) return null;
-  const m =
-    remote.match(/github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/) ??
-    null;
-  if (!m) return null;
-  const id = `${m[1]}/${m[2]}`;
+  const id = parseGitHubRemote(remote);
+  if (!id) return null;
 
   try {
     const out = execFileSync(
@@ -447,122 +396,6 @@ function probeGithubReleases(
   }
 }
 
-// ---- repo signal extraction ----
-
-interface RepoSignals {
-  starterId: string | null;
-  signals: string[];
-  localVersion: string | null;
-  versionSource: AuditCdReport["versionSource"];
-  npmName: string | null;
-  pyName: string | null;
-  vscodePublisher: string | null;
-  vscodeName: string | null;
-  geckoId: string | null;
-}
-
-function extractSignals(repoPath: string): RepoSignals {
-  const signals: string[] = [];
-  let starterId: string | null = null;
-  let localVersion: string | null = null;
-  let versionSource: AuditCdReport["versionSource"] = null;
-  let npmName: string | null = null;
-  let pyName: string | null = null;
-  let vscodePublisher: string | null = null;
-  let vscodeName: string | null = null;
-  let geckoId: string | null = null;
-
-  const pkg = safeReadJson(join(repoPath, "package.json"));
-  if (pkg) {
-    if (typeof pkg.version === "string") {
-      localVersion = pkg.version;
-      versionSource = "package.json";
-    }
-    if (typeof pkg.name === "string") npmName = pkg.name;
-
-    const deps = (pkg.dependencies ?? {}) as Record<string, string>;
-    const devDeps = (pkg.devDependencies ?? {}) as Record<string, string>;
-    const engines = (pkg.engines ?? {}) as Record<string, string>;
-    const scripts = (pkg.scripts ?? {}) as Record<string, string>;
-    const hasDep = (name: string) => name in deps || name in devDeps;
-
-    if (hasDep("discord.js")) {
-      starterId = "discord-bot";
-      signals.push("package.json deps include discord.js");
-    } else if (hasDep("grammy")) {
-      starterId = "telegram-bot";
-      signals.push("package.json deps include grammy");
-    } else if (hasDep("@modelcontextprotocol/sdk")) {
-      starterId = "mcp-server";
-      signals.push("package.json deps include @modelcontextprotocol/sdk");
-    } else if (hasDep("electron-builder") || hasDep("electron")) {
-      starterId = "electron-app";
-      signals.push("package.json deps include electron/electron-builder");
-    } else if (hasDep("expo")) {
-      starterId = "react-native";
-      signals.push("package.json deps include expo");
-    } else if (engines.vscode || Object.values(scripts).some((s) => /\bvsce\b/.test(s))) {
-      starterId = "vscode-extension";
-      signals.push("package.json has engines.vscode or vsce script");
-      if (typeof pkg.publisher === "string") vscodePublisher = pkg.publisher;
-      if (typeof pkg.name === "string") vscodeName = pkg.name;
-    } else if (pkg.bin && pkg.files) {
-      starterId = "npm-package";
-      signals.push("package.json has bin and files");
-    }
-  }
-
-  const pyproject = safeReadText(join(repoPath, "pyproject.toml"));
-  if (pyproject) {
-    const ver = pyproject.match(/^\s*version\s*=\s*["']([^"']+)["']/m);
-    if (ver && !localVersion) {
-      localVersion = ver[1];
-      versionSource = "pyproject.toml";
-    }
-    const name = pyproject.match(/^\s*name\s*=\s*["']([^"']+)["']/m);
-    if (name) pyName = name[1];
-    if (/^\s*(?:dependencies\s*=\s*\[[^\]]*)?["']?(?:mcp\[cli\]|fastmcp)["']?/im.test(pyproject)) {
-      starterId = "mcp-server-python";
-      signals.push("pyproject.toml has fastmcp/mcp dep");
-    }
-  }
-
-  if (existsSync(join(repoPath, "wrangler.toml")) || existsSync(join(repoPath, "wrangler.jsonc"))) {
-    starterId = starterId ?? "cloudflare-pages";
-    signals.push("wrangler.toml present");
-  }
-
-  const manifest = safeReadJson(join(repoPath, "manifest.json"));
-  if (manifest && manifest.manifest_version === 3) {
-    starterId = "browser-extension";
-    signals.push("manifest.json with manifest_version=3");
-    if (!localVersion && typeof manifest.version === "string") {
-      localVersion = manifest.version;
-      versionSource = "manifest.json";
-    }
-    const bss = (manifest.browser_specific_settings ?? {}) as Record<string, unknown>;
-    const gecko = (bss.gecko ?? {}) as Record<string, unknown>;
-    if (typeof gecko.id === "string") geckoId = gecko.id;
-  }
-
-  if (!starterId && existsSync(join(repoPath, "Dockerfile"))) {
-    starterId = "docker-deploy";
-    signals.push("Dockerfile present");
-  }
-
-  return {
-    starterId,
-    signals,
-    localVersion,
-    versionSource,
-    npmName,
-    pyName,
-    vscodePublisher,
-    vscodeName,
-    geckoId,
-  };
-}
-
 // ---- main audit ----
 
 export async function auditCd(
@@ -577,12 +410,12 @@ export async function auditCd(
   const f = options.fetch ?? fetch;
   const timeout = options.timeoutMs ?? 5000;
 
-  const sig = extractSignals(abs);
+  const sig = extractStarterSignals(abs);
   const destinations: DestinationReport[] = [];
   const probes: Promise<DestinationReport>[] = [];
 
   // Per-starter destination plan
-  switch (sig.starterId) {
+  switch (sig.id) {
     case "mcp-server":
     case "npm-package":
       if (sig.npmName) probes.push(probeNpm(sig.npmName, sig.localVersion, f, timeout));
@@ -668,7 +501,7 @@ export async function auditCd(
 
   return {
     repoPath: abs,
-    matchedStarter: { id: sig.starterId, signals: sig.signals },
+    matchedStarter: { id: sig.id, signals: sig.signals },
     localVersion: sig.localVersion,
     versionSource: sig.versionSource,
     destinations,

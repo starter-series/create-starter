@@ -111,86 +111,62 @@ async function runMcpServer(): Promise<void> {
     },
   );
 
-  server.tool(
+  // Each audit_* tool wraps an audit function with the same shape: take an
+  // optional path (defaulting to cwd), call the audit, format its report,
+  // surface errors via isError. registerAuditTool keeps the three nearly
+  // identical try/catch wrappers from drifting.
+  const registerAuditTool = <R>(
+    name: string,
+    description: string,
+    fn: (path: string) => Promise<R>,
+    format: (report: R) => string,
+  ): void => {
+    server.tool(
+      name,
+      description,
+      {
+        path: z
+          .string()
+          .optional()
+          .describe(
+            "Path to the repo to audit (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+          ),
+      },
+      async ({ path: repoPath }) => {
+        try {
+          const report = await fn(repoPath ?? process.cwd());
+          return { content: [{ type: "text" as const, text: format(report) }] };
+        } catch (e) {
+          return {
+            content: [
+              { type: "text" as const, text: `${name} failed: ${(e as Error).message}` },
+            ],
+            isError: true,
+          };
+        }
+      },
+    );
+  };
+
+  registerAuditTool(
     "audit_release",
     "Audit a local repo for release-readiness against the Starter Series quality bar. Detects matched starter, CHANGELOG drift vs merged PRs, version-bump status, and publish-workflow presence. Read-only; never mutates the repo.",
-    {
-      path: z
-        .string()
-        .optional()
-        .describe(
-          "Path to the repo to audit (default: the MCP server's cwd). Use the absolute path of the project the user is currently working in.",
-        ),
-    },
-    async ({ path: repoPath }) => {
-      try {
-        const report = await auditRelease(repoPath ?? process.cwd());
-        return {
-          content: [{ type: "text" as const, text: formatAuditReport(report) }],
-        };
-      } catch (e) {
-        return {
-          content: [
-            { type: "text" as const, text: `audit_release failed: ${(e as Error).message}` },
-          ],
-          isError: true,
-        };
-      }
-    },
+    auditRelease,
+    formatAuditReport,
   );
 
-  server.tool(
+  registerAuditTool(
     "audit_cd",
     "Check whether the local repo's version has been published to its destination registries (npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases). Makes outbound HTTPS requests to public registry APIs; never mutates. Reports per-destination drift (in-sync / needs-publish / local-stale / not-found).",
-    {
-      path: z
-        .string()
-        .optional()
-        .describe(
-          "Path to the repo to audit (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
-        ),
-    },
-    async ({ path: repoPath }) => {
-      try {
-        const report = await auditCd(repoPath ?? process.cwd());
-        return {
-          content: [{ type: "text" as const, text: formatAuditCdReport(report) }],
-        };
-      } catch (e) {
-        return {
-          content: [
-            { type: "text" as const, text: `audit_cd failed: ${(e as Error).message}` },
-          ],
-          isError: true,
-        };
-      }
-    },
+    (p) => auditCd(p),
+    formatAuditCdReport,
   );
 
-  server.tool(
+  registerAuditTool(
     "audit_security",
     "Audit a local repo for baseline security CI hygiene against the Starter Series quality bar: gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning hints, and claude-code-security-review Action. Read-only.",
-    {
-      path: z
-        .string()
-        .optional()
-        .describe("Path to the repo to audit (default: the MCP server's cwd)."),
-    },
-    async ({ path: repoPath }) => {
-      try {
-        const report = await auditSecurity(repoPath ?? process.cwd());
-        return {
-          content: [{ type: "text" as const, text: formatAuditSecurityReport(report) }],
-        };
-      } catch (e) {
-        return {
-          content: [
-            { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
-          ],
-          isError: true,
-        };
-      }
-    },
+    auditSecurity,
+    formatAuditSecurityReport,
   );
 
   const transport = new StdioServerTransport();

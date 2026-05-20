@@ -1,21 +1,14 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
+import { safeReadText, semverCompare, tryGit } from "./audit-helpers.js";
+import {
+  type StarterConfidence,
+  type StarterId,
+  extractStarterSignals,
+} from "./starter-detect.js";
 
-export type StarterId =
-  | "mcp-server"
-  | "mcp-server-python"
-  | "npm-package"
-  | "discord-bot"
-  | "telegram-bot"
-  | "browser-extension"
-  | "vscode-extension"
-  | "electron-app"
-  | "react-native"
-  | "cloudflare-pages"
-  | "docker-deploy";
-
-export type ConfidenceLevel = "high" | "medium" | "low" | "none";
+export type { StarterId } from "./starter-detect.js";
+export type ConfidenceLevel = StarterConfidence;
 export type ShipVerdict = "yes" | "no" | "needs-attention";
 export type WorkflowKind =
   | "release-please"
@@ -70,148 +63,6 @@ export interface AuditReport {
 export interface AuditOptions {
   /** Defaults to process.cwd() when omitted. */
   repoPath?: string;
-}
-
-// ---- helpers ----
-
-function safeReadJson(path: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function safeReadText(path: string): string | null {
-  try {
-    return readFileSync(path, "utf-8");
-  } catch {
-    return null;
-  }
-}
-
-function tryGit(repoPath: string, args: string[]): string | null {
-  try {
-    return execFileSync("git", args, {
-      cwd: repoPath,
-      encoding: "utf-8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return null;
-  }
-}
-
-// ---- starter detection ----
-
-function depFrom(pkg: Record<string, unknown>, name: string): boolean {
-  const deps = (pkg.dependencies ?? {}) as Record<string, string>;
-  const devDeps = (pkg.devDependencies ?? {}) as Record<string, string>;
-  return name in deps || name in devDeps;
-}
-
-function detectStarter(repoPath: string): MatchedStarter {
-  const signals: string[] = [];
-
-  const pyproject = safeReadText(join(repoPath, "pyproject.toml"));
-  if (pyproject) {
-    if (/^\s*(?:dependencies\s*=\s*\[[^\]]*)?["']?(?:mcp\[cli\]|fastmcp)["']?/im.test(pyproject)) {
-      signals.push("pyproject.toml has fastmcp/mcp dep");
-      return { id: "mcp-server-python", confidence: "high", signals };
-    }
-  }
-
-  if (existsSync(join(repoPath, "wrangler.toml")) || existsSync(join(repoPath, "wrangler.jsonc"))) {
-    signals.push("wrangler.toml present");
-    return { id: "cloudflare-pages", confidence: "high", signals };
-  }
-
-  const manifest = safeReadJson(join(repoPath, "manifest.json"));
-  if (manifest && manifest.manifest_version === 3) {
-    signals.push("manifest.json with manifest_version=3");
-    return { id: "browser-extension", confidence: "high", signals };
-  }
-
-  const pkg = safeReadJson(join(repoPath, "package.json"));
-  if (pkg) {
-    const engines = (pkg.engines ?? {}) as Record<string, string>;
-    const scripts = (pkg.scripts ?? {}) as Record<string, string>;
-
-    if (depFrom(pkg, "discord.js")) {
-      signals.push("package.json deps include discord.js");
-      return { id: "discord-bot", confidence: "high", signals };
-    }
-    if (depFrom(pkg, "grammy")) {
-      signals.push("package.json deps include grammy");
-      return { id: "telegram-bot", confidence: "high", signals };
-    }
-    if (depFrom(pkg, "@modelcontextprotocol/sdk")) {
-      signals.push("package.json deps include @modelcontextprotocol/sdk");
-      return { id: "mcp-server", confidence: "high", signals };
-    }
-    if (depFrom(pkg, "electron-builder") || depFrom(pkg, "electron")) {
-      signals.push("package.json deps include electron/electron-builder");
-      return { id: "electron-app", confidence: "high", signals };
-    }
-    if (depFrom(pkg, "expo")) {
-      signals.push("package.json deps include expo");
-      return { id: "react-native", confidence: "high", signals };
-    }
-    if (engines.vscode || Object.values(scripts).some((s) => /\bvsce\b/.test(s))) {
-      signals.push("package.json has engines.vscode or vsce script");
-      return { id: "vscode-extension", confidence: "high", signals };
-    }
-    if (pkg.bin && pkg.files) {
-      signals.push("package.json has bin and files (likely npm package)");
-      return { id: "npm-package", confidence: "medium", signals };
-    }
-  }
-
-  if (existsSync(join(repoPath, "Dockerfile"))) {
-    signals.push("Dockerfile present, no JS/Py framework detected");
-    return { id: "docker-deploy", confidence: "low", signals };
-  }
-
-  return { id: null, confidence: "none", signals: ["no matching signal"] };
-}
-
-// ---- version detection ----
-
-function detectVersion(repoPath: string): { current: string | null; source: VersionReport["source"] } {
-  const pkg = safeReadJson(join(repoPath, "package.json"));
-  if (pkg && typeof pkg.version === "string") {
-    return { current: pkg.version, source: "package.json" };
-  }
-  const pyproject = safeReadText(join(repoPath, "pyproject.toml"));
-  if (pyproject) {
-    const m = pyproject.match(/^\s*version\s*=\s*["']([^"']+)["']/m);
-    if (m) return { current: m[1], source: "pyproject.toml" };
-  }
-  const manifest = safeReadJson(join(repoPath, "manifest.json"));
-  if (manifest && typeof manifest.version === "string") {
-    return { current: manifest.version, source: "manifest.json" };
-  }
-  return { current: null, source: null };
-}
-
-function semverCompare(a: string, b: string): number {
-  const norm = (s: string) =>
-    s.replace(/^v/, "").split(/[.\-+]/).map((p) => {
-      const n = Number(p);
-      return Number.isFinite(n) ? n : p;
-    });
-  const aa = norm(a);
-  const bb = norm(b);
-  for (let i = 0; i < Math.max(aa.length, bb.length); i++) {
-    const av = aa[i] ?? 0;
-    const bv = bb[i] ?? 0;
-    if (av === bv) continue;
-    if (typeof av === "number" && typeof bv === "number") {
-      return av < bv ? -1 : 1;
-    }
-    return String(av) < String(bv) ? -1 : 1;
-  }
-  return 0;
 }
 
 // ---- changelog parsing ----
@@ -308,8 +159,14 @@ export async function auditRelease(repoPath: string): Promise<AuditReport> {
     throw new Error(`Not a directory: ${abs}`);
   }
 
-  const matchedStarter = detectStarter(abs);
-  const { current, source } = detectVersion(abs);
+  const sig = extractStarterSignals(abs);
+  const matchedStarter: MatchedStarter = {
+    id: sig.id,
+    confidence: sig.confidence,
+    signals: sig.signals,
+  };
+  const current = sig.localVersion;
+  const source = sig.versionSource;
 
   const lastTag = tryGit(abs, ["describe", "--tags", "--abbrev=0"]) || null;
   let drift: VersionReport["drift"] = "unknown";
