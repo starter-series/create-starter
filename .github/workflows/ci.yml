@@ -75,6 +75,30 @@ jobs:
         if: matrix.node-version == 22
         run: npx --yes license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
 
+      - name: Verify EN/KO docs heading parity
+        if: matrix.node-version == 22
+        # Cheap structural check: same number of "## " sections in README.md
+        # and README.ko.md, same in docs/graduation-from-vibe-coding{,.ko}.md.
+        # We count only "^## " (h2 with space) to avoid matching shell
+        # comments inside ```bash``` blocks. Doesn't validate translation
+        # quality — just catches one-sided additions, which is the most
+        # common drift mode.
+        run: |
+          set -euo pipefail
+          check_parity() {
+            local en="$1" ko="$2"
+            local en_n ko_n
+            en_n=$(grep -cE '^## ' "$en" || true)
+            ko_n=$(grep -cE '^## ' "$ko" || true)
+            if [ "$en_n" != "$ko_n" ]; then
+              echo "::error file=$ko::Heading count drift: $en has $en_n h2 sections, $ko has $ko_n. One side added or removed a section."
+              return 1
+            fi
+            echo "  $en ↔ $ko: $en_n h2 sections (parity OK)"
+          }
+          check_parity README.md README.ko.md
+          check_parity docs/graduation-from-vibe-coding.md docs/graduation-from-vibe-coding.ko.md
+
       - name: Security audit
         # `moderate` raised from `high` after package.json#overrides patched
         # the transitive hono / ip-address / @hono/node-server moderates
