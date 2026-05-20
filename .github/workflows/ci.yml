@@ -13,12 +13,20 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 = engines.node floor + the version we publish against.
+        # 24 = current Active LTS — verify ahead so the eventual bump is free.
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Scan for secrets
+        # Only run once across the matrix — gitleaks reads the repo, not Node.
+        if: matrix.node-version == 22
         env:
           # Bump together; checksum from
           # https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt
@@ -32,6 +40,7 @@ jobs:
           /tmp/gitleaks detect --source . --verbose --redact
 
       - name: Check for large files
+        if: matrix.node-version == 22
         run: |
           LARGE=$(find . -not -path './.git/*' -not -path './node_modules/*' -type f -size +5M)
           if [ -n "$LARGE" ]; then
@@ -42,13 +51,14 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
       - name: Verify package-lock.json is in sync with package.json
+        if: matrix.node-version == 22
         run: |
           # Common Dependabot footgun: package.json edited without a matching
           # lockfile update (or vice versa). `npm install --package-lock-only`
@@ -62,10 +72,14 @@ jobs:
           fi
 
       - name: Check licenses
+        if: matrix.node-version == 22
         run: npx --yes license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
 
       - name: Security audit
-        run: npm audit --audit-level=high
+        # `moderate` raised from `high` after package.json#overrides patched
+        # the transitive hono / ip-address / @hono/node-server moderates
+        # (see 2026-05-21 modernization audit).
+        run: npm audit --audit-level=moderate
 
       - name: Build (tsc — also typechecks)
         run: npm run build

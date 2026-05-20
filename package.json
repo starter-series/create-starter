@@ -64,6 +64,9 @@
     "typescript": "^5.7.0"
   },
   "overrides": {
-    "fast-uri": "^3.1.2"
+    "fast-uri": "^3.1.2",
+    "hono": "^4.12.21",
+    "@hono/node-server": "^1.19.13",
+    "ip-address": "^10.2.0"
   }
 }
