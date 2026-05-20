@@ -1,20 +1,40 @@
 # create-starter
 
-> Scaffold projects from the [Starter Series](https://github.com/starter-series) templates — MCP server, Claude Code skill, and direct CLI, in one package.
+> Scaffold and audit Starter Series projects — MCP server, Claude Code skill, and CLI in one package.
+
+Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What keeps a shipped repo trustworthy is the audit primitives (`audit`, `audit-cd`, `audit-security`) verifying release, CD, and CI security hygiene against a known bar — gating each merge instead of asking a human to re-check by hand.
 
 [🇰🇷 한국어](README.ko.md)
 
-## What it does
+## Currently implemented
 
-`create-starter` downloads a Starter Series template, substitutes placeholders (name, description), handles Python package renames (pyproject + src dir), and runs `git init`. Input is validated by Zod before any filesystem change, extraction happens in a sibling tmp dir so failures never leave half-scaffolded output, and downloads have retry + timeout + size limits.
+- **CLI** — `npx @starter-series/create my-bot --template discord-bot`. One of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
+- **MCP server** — five stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`. One binary chooses the mode by argv (positional → CLI, none → MCP stdio).
+- **Claude Desktop extension** — `.mcpb` bundle on every release; drag onto the Claude Desktop settings window.
+- **Claude Code plugin + skill** — `/plugin install create-starter@starter-series` ships the MCP server and the conversational `create` skill together.
+- **MCP Registry entry** — `io.github.starter-series/create-starter`, OIDC-verified namespace, npm tarball cross-checked.
+- **`audit_release`** — detects matched starter, version vs last-tag drift, CHANGELOG drift vs merged PRs (`git log <tag>..HEAD`), publish-workflow kind (release-please / publish-on-tag / auto-release).
+- **`audit_cd`** — probes npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases for per-destination publish drift (in-sync / needs-publish / local-stale / not-found / unsupported).
+- **`audit_security`** — checks 8 CI hygiene items: gitleaks (with pin check), CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action. This repo passes 8/8 HARDENED.
+- **Graduation guide** — `docs/graduation-from-vibe-coding.md` (+ Korean): five-step path from Lovable/Bolt/v0 exports to GitHub Actions + a real deploy target, using the three audit primitives.
 
-It runs in five modes — pick whichever matches your workflow.
+## Planned
 
-- **Claude Code plugin** — `/plugin marketplace add starter-series/create-starter` then `/plugin install create-starter@starter-series`. Ships the MCP server and skill together.
-- **Claude Desktop extension** — drag a `.mcpb` from the [latest release](https://github.com/starter-series/create-starter/releases/latest) onto the Claude Desktop settings window. No `npm`, no JSON editing.
-- **CLI** — `npx @starter-series/create my-bot --template discord-bot` in any terminal.
-- **MCP server** — any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, Windsurf, …) can call `list_templates` and `create_project`.
-- **Claude Code skill** — the bundled `skills/create/SKILL.md` guides Claude Code conversationally (auto-installed with the plugin).
+- `audit_cd` support for Chrome Web Store, EAS, Railway, Fly, and GHCR. Currently reported as `unsupported` because those destinations require auth or have no public read API.
+
+## Design intent
+
+- **One binary, two surfaces.** CLI and MCP stdio share one scaffolding engine. Argv decides which surface answers. No duplicated logic for "the same thing called from a human vs an agent".
+- **Atomic on failure.** Extraction happens in a sibling `.<name>-incomplete-<rand>` directory and only renames into the final path on success. Network failure, corrupt archive, partial write — none of them leaves a half-scaffolded directory behind.
+- **Audit is first-class.** Templates ship a security baseline (gitleaks pinned to SHA, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review). The three audit commands check whether a downstream repo still matches that bar — turning the baseline from a one-time scaffold into an ongoing gate.
+- **Eat your own dogfood.** This repo passes `audit_security` 8/8 HARDENED. If the tool that audits other repos can't pass its own check, the bar isn't real.
+- **Read-only outside its sandbox.** Downloads are capped (50 MB, 30 s timeout, 3 retries). Relative output paths cannot escape cwd; absolute paths are accepted only as explicit user intent. `git init` failure is logged but non-fatal.
+
+## Non-goals
+
+- **Full vendor parity in `audit_cd`.** Destinations without a public read API stay `unsupported` rather than reporting confidently-wrong state.
+- **Rewriting app code.** The graduation flow lifts CI/CD from the matching starter; it never touches application code.
+- **A general-purpose project generator.** Templates are the Starter Series 11. New stacks land as new starters, not as flags on `create_project`.
 
 ## Quick start — CLI
 
@@ -76,7 +96,7 @@ npm install
 npm run build
 ```
 
-Requires Node.js ≥20.
+Requires Node.js ≥22.
 
 ## One-click install in Claude Desktop
 
@@ -145,6 +165,8 @@ Ownership is verified through GitHub OIDC (namespace `io.github.starter-series/*
 
 ## Tools
 
+Scaffolding:
+
 - **`list_templates`** — returns the full template table as JSON.
 - **`create_project`** — args:
   - `template` *(required)* — template ID from the table above.
@@ -152,6 +174,12 @@ Ownership is verified through GitHub OIDC (namespace `io.github.starter-series/*
   - `description` *(optional)* — one-line description.
   - `output_dir` *(optional)* — defaults to `./<name>` relative to the MCP server's cwd. Relative paths must stay inside cwd; absolute paths are accepted as explicit user intent.
   - `init_git` *(optional, default `true`)* — run `git init` after scaffold.
+
+Audit (each takes an optional `path` arg, default = MCP server cwd; all read-only):
+
+- **`audit_release`** — release-readiness diagnosis. CLI mirror: `create-starter audit [path]`.
+- **`audit_cd`** — per-destination publish-drift probe. CLI mirror: `create-starter audit-cd [path]`.
+- **`audit_security`** — baseline CI security hygiene check. CLI mirror: `create-starter audit-security [path]`.
 
 ## Safety & reliability
 
