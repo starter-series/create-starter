@@ -100,9 +100,10 @@ jobs:
           check_parity docs/graduation-from-vibe-coding.md docs/graduation-from-vibe-coding.ko.md
 
       - name: Security audit
-        # `moderate` raised from `high` after package.json#overrides patched
-        # the transitive hono / ip-address / @hono/node-server moderates
-        # (see 2026-05-21 modernization audit).
+        # `moderate` (not `high`) because package.json#overrides patches the
+        # transitive hono / ip-address / @hono/node-server moderates that the
+        # MCP SDK's HTTP-transport branch pulls in. Without the overrides,
+        # this step would false-positive on transitives we never import.
         run: npm audit --audit-level=moderate
 
       - name: Build (tsc — also typechecks)

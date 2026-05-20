@@ -8,18 +8,93 @@
 // Kept as ZodRawShapeCompat (flat object literals of schemas) — that's what
 // McpServer.registerTool accepts. Wrap a top-level entry in z.object(...) only
 // when nesting inside another schema.
+//
+// Enum value tuples below use `satisfies readonly T[]` to assert at compile
+// time that every literal here is a valid member of the corresponding union
+// type exported by audit*.ts. If audit*.ts adds a new variant, the schema
+// here will produce a runtime mismatch on first emission — caught loudly,
+// not silently — but the compile-time check still guards against typos.
 
 import { z } from "zod";
+import type { ShipVerdict, WorkflowKind, ConfidenceLevel } from "./audit.js";
+import type { CdStatus, CdVerdict, DestinationName } from "./audit-cd.js";
+import type { CheckStatus, SecurityCheckName } from "./audit-security.js";
+
+// ---- shared enums (sourced from audit*.ts union types) ----
+
+const shipVerdictValues = ["yes", "no", "needs-attention"] as const satisfies readonly ShipVerdict[];
+
+const workflowKindValues = [
+  "release-please",
+  "auto-release",
+  "publish-on-tag",
+  "publish-manual",
+  "unknown",
+  "missing",
+] as const satisfies readonly WorkflowKind[];
+
+const confidenceLevelValues = [
+  "high",
+  "medium",
+  "low",
+  "none",
+] as const satisfies readonly ConfidenceLevel[];
+
+const cdStatusValues = [
+  "in-sync",
+  "needs-publish",
+  "local-stale",
+  "not-found",
+  "error",
+  "unsupported",
+] as const satisfies readonly CdStatus[];
+
+const cdVerdictValues = [
+  "in-sync",
+  "needs-publish",
+  "drift",
+  "unknown",
+] as const satisfies readonly CdVerdict[];
+
+const destinationNameValues = [
+  "npm",
+  "pypi",
+  "open-vsx",
+  "vs-marketplace",
+  "amo",
+  "github-releases",
+] as const satisfies readonly DestinationName[];
+
+const checkStatusValues = [
+  "present",
+  "missing",
+  "partial",
+  "not-applicable",
+] as const satisfies readonly CheckStatus[];
+
+const securityCheckNameValues = [
+  "gitleaks",
+  "codeql",
+  "dep-audit",
+  "license-check",
+  "ignore-scripts",
+  "dependabot",
+  "secret-scanning",
+  "claude-code-security-review",
+] as const satisfies readonly SecurityCheckName[];
+
+// VersionSource = "package.json" | ... | null — inline literal in
+// audit.ts and audit-cd.ts; not exported as a named type, so we list it
+// directly. The nullability is expressed via .nullable() in each schema.
+const versionSourceValues = ["package.json", "pyproject.toml", "manifest.json"] as const;
 
 // ---- audit_release ----
-
-const confidenceLevel = z.enum(["high", "medium", "low", "none"]);
 
 export const auditReleaseOutputShape = {
   repoPath: z.string(),
   matchedStarter: z.object({
     id: z.string().nullable(),
-    confidence: confidenceLevel,
+    confidence: z.enum(confidenceLevelValues),
     signals: z.array(z.string()),
   }),
   changelog: z.object({
@@ -36,9 +111,7 @@ export const auditReleaseOutputShape = {
   }),
   version: z.object({
     current: z.string().nullable(),
-    source: z
-      .enum(["package.json", "pyproject.toml", "manifest.json"])
-      .nullable(),
+    source: z.enum(versionSourceValues).nullable(),
     lastTag: z.string().nullable(),
     drift: z.enum([
       "current==tag",
@@ -50,41 +123,16 @@ export const auditReleaseOutputShape = {
   }),
   publishWorkflow: z.object({
     files: z.array(z.string()),
-    likelyKind: z.enum([
-      "release-please",
-      "auto-release",
-      "publish-on-tag",
-      "publish-manual",
-      "unknown",
-      "missing",
-    ]),
+    likelyKind: z.enum(workflowKindValues),
   }),
   shipReady: z.object({
-    verdict: z.enum(["yes", "no", "needs-attention"]),
+    verdict: z.enum(shipVerdictValues),
     blockers: z.array(z.string()),
     warnings: z.array(z.string()),
   }),
 };
 
 // ---- audit_cd ----
-
-const cdStatus = z.enum([
-  "in-sync",
-  "needs-publish",
-  "local-stale",
-  "not-found",
-  "error",
-  "unsupported",
-]);
-
-const destinationName = z.enum([
-  "npm",
-  "pypi",
-  "open-vsx",
-  "vs-marketplace",
-  "amo",
-  "github-releases",
-]);
 
 export const auditCdOutputShape = {
   repoPath: z.string(),
@@ -93,21 +141,19 @@ export const auditCdOutputShape = {
     signals: z.array(z.string()),
   }),
   localVersion: z.string().nullable(),
-  versionSource: z
-    .enum(["package.json", "pyproject.toml", "manifest.json"])
-    .nullable(),
+  versionSource: z.enum(versionSourceValues).nullable(),
   destinations: z.array(
     z.object({
-      name: destinationName,
+      name: z.enum(destinationNameValues),
       identifier: z.string(),
       publishedVersion: z.string().nullable(),
       publishedAt: z.string().nullable(),
-      status: cdStatus,
+      status: z.enum(cdStatusValues),
       detail: z.string().optional(),
     }),
   ),
   overall: z.object({
-    verdict: z.enum(["in-sync", "needs-publish", "drift", "unknown"]),
+    verdict: z.enum(cdVerdictValues),
     blockers: z.array(z.string()),
     warnings: z.array(z.string()),
   }),
@@ -115,26 +161,13 @@ export const auditCdOutputShape = {
 
 // ---- audit_security ----
 
-const checkStatus = z.enum(["present", "missing", "partial", "not-applicable"]);
-
-const securityCheckName = z.enum([
-  "gitleaks",
-  "codeql",
-  "dep-audit",
-  "license-check",
-  "ignore-scripts",
-  "dependabot",
-  "secret-scanning",
-  "claude-code-security-review",
-]);
-
 export const auditSecurityOutputShape = {
   repoPath: z.string(),
   ecosystem: z.enum(["node", "python", "mixed", "other"]),
   checks: z.array(
     z.object({
-      name: securityCheckName,
-      status: checkStatus,
+      name: z.enum(securityCheckNameValues),
+      status: z.enum(checkStatusValues),
       evidence: z.array(z.string()),
       recommendation: z.string().optional(),
     }),
