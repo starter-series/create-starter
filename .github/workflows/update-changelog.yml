@@ -77,6 +77,16 @@ jobs:
           fi
 
           BRANCH="chore/changelog-${TAG}"
+
+          # Idempotency guard: if a previous release event already opened
+          # a PR for this tag (re-published release, re-run workflow, etc.),
+          # don't try to push to the same branch — it would fail or, worse,
+          # silently force-update a PR that someone is reviewing.
+          if gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" >/dev/null 2>&1; then
+            echo "::notice::Branch ${BRANCH} already exists; skipping (a prior run handled this tag)."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
