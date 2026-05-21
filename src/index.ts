@@ -19,13 +19,12 @@ import {
   auditCdOutputShape,
   auditSecurityOutputShape,
 } from "./mcp-schemas.js";
-
-const PKG_VERSION = "0.4.0";
+import { readVersion } from "./version.js";
 
 async function runMcpServer(): Promise<void> {
   const server = new McpServer({
     name: "create-starter",
-    version: PKG_VERSION,
+    version: readVersion(),
   });
 
   server.registerTool(

@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { stderrLogger } from "./log.js";
 import { formatScaffoldReport, scaffold } from "./scaffold.js";
@@ -8,6 +5,7 @@ import { getTemplate, templates } from "./templates.js";
 import { auditRelease, formatAuditReport } from "./audit.js";
 import { auditCd, formatAuditCdReport } from "./audit-cd.js";
 import { auditSecurity, formatAuditSecurityReport } from "./audit-security.js";
+import { readVersion } from "./version.js";
 
 const HELP = `create-starter — scaffold and audit Starter Series projects.
 
@@ -99,17 +97,6 @@ function printTemplates(): void {
     process.stdout.write(
       `${r.id.padEnd(widths.id)}  ${r.name.padEnd(widths.name)}  ${r.category.padEnd(widths.category)}  ${r.stack}\n`,
     );
-  }
-}
-
-function readVersion(): string {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const pkgPath = join(here, "..", "package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
-    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
-  } catch {
-    return "0.0.0";
   }
 }
 
