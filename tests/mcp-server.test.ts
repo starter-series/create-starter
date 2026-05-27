@@ -144,7 +144,14 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
     const names = tools.map((t) => t.name).sort();
     assert.deepEqual(
       names,
-      ["audit_cd", "audit_release", "audit_security", "create_project", "list_templates"],
+      [
+        "audit_cd",
+        "audit_release",
+        "audit_security",
+        "create_project",
+        "list_templates",
+        "seed_security_guidance",
+      ],
       "tools/list returned an unexpected set",
     );
     for (const t of tools) {

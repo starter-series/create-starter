@@ -7,7 +7,7 @@
     {
       "name": "create-starter",
       "source": ".",
-      "description": "Scaffold projects from the Starter Series templates — MCP server and Claude Code skill in one plugin."
+      "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives."
     }
   ]
 }
