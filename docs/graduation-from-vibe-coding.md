@@ -14,7 +14,7 @@ This guide is for you if:
 
 - ✅ Your app would benefit from a **different deploy target** (your own VPS, GHCR, Cloudflare Workers/Pages, App Store, Chrome Web Store, npm, PyPI…) than your current platform's default
 - ✅ You want **GitHub Actions logs** for CI/CD steps the platform hides
-- ✅ You want to **stop paying token costs** for repeated build cycles
+- ✅ You want **predictable CI minutes** (GitHub Actions: free for public repos, ~$0.30/hr private) instead of per-build platform billing
 - ✅ You want **CI-side supply-chain security gates** (gitleaks, CodeQL, OIDC publish, supply-chain attestations) before code reaches production
 - ✅ Your code is **already in GitHub** (Lovable's sync, Bolt's export, v0's git panel)
 
@@ -77,7 +77,25 @@ Each vibe-coding platform has a sensible default (Lovable → Netlify/Vercel, Bo
 | **Reusable library** | npm OIDC trusted publishing | [`npm-package`](https://github.com/starter-series/npm-package-starter) |
 | **Python tool / agent** | PyPI OIDC trusted publishing | [`python-mcp-server`](https://github.com/starter-series/python-mcp-server-starter) |
 
-> **Claude / voice agent on Cloudflare Workers (added 2026-05)** — Anthropic and Cloudflare announced Claude Managed Agents on Cloudflare Workers (2026-05-19); the `@cloudflare/voice` SDK shipped a week later (2026-05-26). For now the path is: build with `docker-deploy` (containerized) or hand-write a Wrangler config; a dedicated `cloudflare-workers-agent` starter is on the roadmap once the Managed Agents API stabilizes.
+> **Claude / voice agent on Cloudflare Workers (added 2026-05)** — Anthropic and Cloudflare announced Claude Managed Agents on Cloudflare Workers (2026-05-19); the `@cloudflare/voice` SDK shipped a week later (2026-05-26). Two paths today, both via the existing `docker-deploy` starter:
+>
+> **(a) Quick Wrangler config** — copy this `wrangler.toml` into your repo root (replaces the Dockerfile path):
+> ```toml
+> name = "my-claude-agent"
+> main = "src/index.ts"
+> compatibility_date = "2026-05-27"
+>
+> [vars]
+> # CLAUDE_API_KEY set via: wrangler secret put CLAUDE_API_KEY
+>
+> [observability]
+> enabled = true
+> ```
+> Then add `wrangler deploy` to the deploy step of `docker-deploy-starter`'s `.github/workflows/deploy.yml` in place of the SSH-to-VPS step. Secret: `CLOUDFLARE_API_TOKEN`.
+>
+> **(b) Container path** — keep `docker-deploy-starter` unchanged and run the container on any host that speaks the Claude Managed Agents protocol; trade-off is no Workers-native cold start.
+>
+> A dedicated `cloudflare-workers-agent` starter is on the roadmap once the Managed Agents API stabilizes (track [starter-series/cloudflare-pages-starter#1](https://github.com/starter-series/cloudflare-pages-starter/issues)).
 
 **Most common path**: vibe-coded React/Next/Vite SPA → `docker-deploy` (any VPS you own) or `cloudflare-pages` (free, unlimited bandwidth).
 
@@ -224,4 +242,4 @@ After completing all five steps, you have:
 
 - **Stuck on a specific platform?** Open an issue: [starter-series/create-starter/issues](https://github.com/starter-series/create-starter/issues/new). Include the export source (Lovable/Bolt/v0) and which step blocked you.
 - **Want the AI to drive the whole thing?** Install `create-starter` as a Claude Code plugin: `/plugin marketplace add starter-series/create-starter && /plugin install create-starter@starter-series`. Then say *"graduate this Lovable export to docker-deploy"* and the agent handles steps 1–4.
-- **More starters?** See the [full list](https://github.com/starter-series). If your case isn't covered, the `docker-deploy` starter is language- and framework-agnostic — it's the universal escape hatch.
+- **More starters?** See the [full list](https://github.com/starter-series). If your case isn't covered, the `docker-deploy` starter is language- and framework-agnostic — the universal fallback for any app you want to containerize.

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { parseGitHubRemote, safeReadText } from "./audit-helpers.js";
 
 export type SecurityCheckName =
@@ -21,6 +21,13 @@ export interface SecurityCheckResult {
   status: CheckStatus;
   evidence: string[];
   recommendation?: string;
+  /**
+   * Mark this check as recommended-but-not-required. When `optional` is true
+   * and `status` is "missing", the verdict aggregator counts it as a soft
+   * advisory rather than a CI-hygiene gap. Currently set for
+   * `claude-security-guidance` (a repo-author content file, not a CI primitive).
+   */
+  optional?: boolean;
 }
 
 export interface AuditSecurityReport {
@@ -331,12 +338,16 @@ function checkClaudeSecurityGuidance(repoPath: string): SecurityCheckResult {
     return {
       name: "claude-security-guidance",
       status: "present",
-      evidence: found.map((p) => p.replace(repoPath + "/", "")),
+      // path.relative gives forward slashes on POSIX, backslashes on Windows,
+      // matching the platform — both are valid evidence strings.
+      evidence: found.map((p) => relative(repoPath, p)),
+      optional: true,
     };
   }
   return {
     name: "claude-security-guidance",
     status: "missing",
+    optional: true,
     evidence: [],
     recommendation:
       "Add a `claude-security-guidance.md` at repo root with org-specific security rules. Anthropic's Claude Code Security Guidance Plugin (2026-05-26) reads this file as an in-session guard while Claude writes code. Complements (does not replace) the post-PR `claude-code-security-review` Action and this static CI audit.",
@@ -376,9 +387,17 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
     .filter((c) => c.status === "missing" || c.status === "partial")
     .map((c) => `${c.name} (${c.status}): ${c.recommendation ?? "no detail"}`);
 
+  // Verdict aggregator only counts CORE checks (CI primitives). Optional
+  // checks like `claude-security-guidance` (a repo-author content file) are
+  // surfaced in `issues` but don't downgrade the verdict on their own — a
+  // repo that has the full CI baseline stays HARDENED even before the author
+  // writes their org-specific guidance file.
+  const coreMissing = checks.filter((c) => c.status === "missing" && !c.optional).length;
+  const corePartial = checks.filter((c) => c.status === "partial" && !c.optional).length;
+
   let verdict: AuditSecurityReport["overall"]["verdict"];
-  if (summary.missing === 0 && summary.partial === 0) verdict = "hardened";
-  else if (summary.missing <= 2) verdict = "needs-attention";
+  if (coreMissing === 0 && corePartial === 0) verdict = "hardened";
+  else if (coreMissing <= 2) verdict = "needs-attention";
   else verdict = "soft";
 
   return {

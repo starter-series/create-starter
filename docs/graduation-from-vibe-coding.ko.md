@@ -12,7 +12,7 @@
 
 - ✅ 현재 플랫폼 기본값과 다른 **deploy target**이 어울리는 앱이 있음 (자체 VPS, GHCR, Cloudflare Workers/Pages, App Store, Chrome Web Store, npm, PyPI…)
 - ✅ 플랫폼이 숨기는 CI/CD 단계에 대한 **GitHub Actions 로그**가 필요
-- ✅ 반복 빌드의 **토큰 비용 중단** 원함
+- ✅ 빌드별 platform 과금 대신 **예측 가능한 CI minutes** (GitHub Actions: 공개 레포 무료, 비공개 ~$0.30/hr) 원함
 - ✅ 코드가 production에 닿기 전 **CI 단계 공급망 보안 게이트** (gitleaks, CodeQL, OIDC publish, supply-chain attestation) 원함
 - ✅ 코드가 **이미 GitHub에 있음** (Lovable sync, Bolt export, v0 git panel 결과물)
 
@@ -75,7 +75,25 @@ npx -y @starter-series/create audit-security
 | **재사용 가능 라이브러리** | npm OIDC trusted publishing | [`npm-package`](https://github.com/starter-series/npm-package-starter) |
 | **Python 도구 / 에이전트** | PyPI OIDC trusted publishing | [`python-mcp-server`](https://github.com/starter-series/python-mcp-server-starter) |
 
-> **Cloudflare Workers 위 Claude / voice agent (2026-05 추가)** — Anthropic과 Cloudflare가 Claude Managed Agents on Cloudflare Workers를 발표 (2026-05-19), 일주일 후 `@cloudflare/voice` SDK 출시 (2026-05-26). 현 시점 경로: `docker-deploy` (컨테이너화) 또는 Wrangler 수동 설정. Managed Agents API 안정화 시 별도 `cloudflare-workers-agent` starter 로드맵.
+> **Cloudflare Workers 위 Claude / voice agent (2026-05 추가)** — Anthropic과 Cloudflare가 Claude Managed Agents on Cloudflare Workers를 발표 (2026-05-19), 일주일 후 `@cloudflare/voice` SDK 출시 (2026-05-26). 현재 두 경로 (둘 다 기존 `docker-deploy` starter 기반):
+>
+> **(a) Wrangler 빠른 설정** — 다음 `wrangler.toml`을 레포 루트에 복사 (Dockerfile 경로 대체):
+> ```toml
+> name = "my-claude-agent"
+> main = "src/index.ts"
+> compatibility_date = "2026-05-27"
+>
+> [vars]
+> # CLAUDE_API_KEY는 wrangler secret put CLAUDE_API_KEY로 설정
+>
+> [observability]
+> enabled = true
+> ```
+> 그 다음 `docker-deploy-starter`의 `.github/workflows/deploy.yml`에서 SSH-to-VPS 단계를 `wrangler deploy`로 교체. 시크릿: `CLOUDFLARE_API_TOKEN`.
+>
+> **(b) 컨테이너 경로** — `docker-deploy-starter` 그대로 유지하고 Claude Managed Agents 프로토콜을 지원하는 호스트에서 컨테이너 실행. 트레이드오프: Workers 네이티브 cold start 이점 없음.
+>
+> Managed Agents API 안정화 시 별도 `cloudflare-workers-agent` starter 로드맵 ([starter-series/cloudflare-pages-starter#1](https://github.com/starter-series/cloudflare-pages-starter/issues) 추적).
 
 **가장 흔한 경로**: 바이브 코딩 React/Next/Vite SPA → `docker-deploy` (자체 소유 VPS) 또는 `cloudflare-pages` (무료, 무제한 대역폭).
 
@@ -221,4 +239,4 @@ v0가 생성한 `app/api/*` 라우트는 Vercel edge runtime 가정. docker-depl
 
 - **특정 플랫폼에서 막혔다?** 이슈 등록: [starter-series/create-starter/issues](https://github.com/starter-series/create-starter/issues/new). export 소스 (Lovable/Bolt/v0) + 어느 단계에서 막혔는지 포함.
 - **AI에게 전체를 맡기고 싶다?** `create-starter`를 Claude Code 플러그인으로 설치: `/plugin marketplace add starter-series/create-starter && /plugin install create-starter@starter-series`. 그 다음 *"이 Lovable export를 docker-deploy로 졸업시켜줘"*라고 하면 에이전트가 1~4단계 수행.
-- **더 많은 starter?** [전체 목록](https://github.com/starter-series) 참조. 만약 케이스가 안 나오면 `docker-deploy` starter는 언어/프레임워크 무관 — 만능 escape hatch.
+- **더 많은 starter?** [전체 목록](https://github.com/starter-series) 참조. 만약 케이스가 안 나오면 `docker-deploy` starter는 언어/프레임워크 무관 — 컨테이너화하고 싶은 어떤 앱이든 받아주는 만능 fallback.

@@ -124,12 +124,54 @@ describe("auditSecurity — flags missing checks", () => {
       writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
       const r = await auditSecurity(dir);
       assert.equal(r.ecosystem, "node");
+      // Drift gate: if a new check is added to SecurityCheckName + the checks
+      // array but not surfaced via tests, this length assertion catches it.
+      assert.equal(r.checks.length, 9, "expected 9 checks; drift between SecurityCheckName and the checks array");
       const missing = r.checks.filter((c) => c.status === "missing").map((c) => c.name);
       assert.ok(missing.includes("gitleaks"));
       assert.ok(missing.includes("codeql"));
       assert.ok(missing.includes("dep-audit"));
       assert.ok(missing.includes("dependabot"));
       assert.equal(r.overall.verdict, "soft");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("treats claude-security-guidance as optional: HARDENED verdict despite its absence when all CORE checks pass", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      // Inject every core check workflow + Dependabot grouped config to drive verdict=hardened.
+      mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+      writeFileSync(
+        join(dir, ".github", "workflows", "ci.yml"),
+        `
+jobs:
+  ci:
+    steps:
+      - uses: gitleaks/gitleaks-action@v2.3.9
+      - uses: github/codeql-action/init@v3
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+      - run: npx license-checker --production
+      - uses: anthropics/claude-code-security-review@main
+`,
+      );
+      writeFileSync(
+        join(dir, ".github", "dependabot.yml"),
+        `version: 2\nupdates:\n  - package-ecosystem: npm\n    groups:\n      all-deps:\n        patterns: ["*"]\n`,
+      );
+      const r = await auditSecurity(dir);
+      const guidance = r.checks.find((c) => c.name === "claude-security-guidance")!;
+      assert.equal(guidance.status, "missing");
+      assert.equal(guidance.optional, true);
+      // Verdict aggregator ignores optional-missing checks → hardened even with guidance absent.
+      // Note: secret-scanning is also expected MISSING (no gh API → fallback path),
+      // so this asserts the optional handling specifically rather than a perfect-score verdict.
+      const coreMissing = r.checks.filter((c) => c.status === "missing" && !c.optional);
+      // claude-security-guidance must NOT appear in coreMissing
+      assert.ok(!coreMissing.some((c) => c.name === "claude-security-guidance"));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

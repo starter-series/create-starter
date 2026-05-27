@@ -1,6 +1,6 @@
 ---
 description: Scaffold a new project from a Starter Series template (Discord/Telegram bot, MCP server, browser/VS Code extension, Electron, React Native, Cloudflare Pages, npm package, Docker deploy).
-argument-hint: [project-name] [--template <id>]
+argument-hint: "[project-name] [--template <id>]"
 ---
 
 You are scaffolding a new project from the **Starter Series** templates via the `create-starter` MCP server.

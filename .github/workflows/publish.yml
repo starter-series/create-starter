@@ -56,24 +56,39 @@ jobs:
             exit 1
           fi
 
-      - name: Verify server.json version matches package.json
+      - name: Verify version sync across all 4 manifests
         run: |
-          if [ ! -f server.json ]; then
-            echo "::error::server.json not found at repo root"
-            exit 1
-          fi
-          SERVER_VERSION=$(node -e "console.log(require('./server.json').version)")
+          # 4 places hold version: package.json (source-of-truth), server.json,
+          # manifest.json (Claude Desktop .mcpb), .claude-plugin/plugin.json
+          # (Claude Code plugin). Drift between them produces visible-to-user
+          # version mismatch (e.g., Claude Desktop ext manager vs npm). Gate
+          # publish on parity.
+          PKG_VERSION="${{ steps.pkg.outputs.version }}"
+          declare -A FILES=(
+            [server.json]="server.json"
+            [manifest.json]="manifest.json"
+            [.claude-plugin/plugin.json]=".claude-plugin/plugin.json"
+          )
+          for path in server.json manifest.json .claude-plugin/plugin.json; do
+            if [ ! -f "$path" ]; then
+              echo "::error::$path not found at repo root"
+              exit 1
+            fi
+            V=$(node -e "console.log(require('./$path').version)")
+            if [ "$V" != "$PKG_VERSION" ]; then
+              echo "::error::$path version ($V) does not match package.json version ($PKG_VERSION)"
+              exit 1
+            fi
+            echo "  $path: $V"
+          done
+          # Also verify mcpName parity between server.json and package.json
           SERVER_NAME=$(node -e "console.log(require('./server.json').name)")
           PKG_MCP_NAME=$(node -e "console.log(require('./package.json').mcpName || '')")
-          if [ "$SERVER_VERSION" != "${{ steps.pkg.outputs.version }}" ]; then
-            echo "::error::server.json version ($SERVER_VERSION) does not match package.json version (${{ steps.pkg.outputs.version }})"
-            exit 1
-          fi
           if [ "$SERVER_NAME" != "$PKG_MCP_NAME" ]; then
             echo "::error::server.json name ($SERVER_NAME) does not match package.json mcpName ($PKG_MCP_NAME)"
             exit 1
           fi
-          echo "server.json verified: $SERVER_NAME@$SERVER_VERSION"
+          echo "All 4 manifests aligned at v$PKG_VERSION"
 
       - uses: actions/setup-node@v6
         with:

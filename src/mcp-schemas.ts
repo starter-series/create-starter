@@ -84,6 +84,16 @@ const securityCheckNameValues = [
   "claude-security-guidance",
 ] as const satisfies readonly SecurityCheckName[];
 
+// Compile-time exhaustiveness gate: `satisfies` only proves every array element
+// is a valid SecurityCheckName — it does NOT prove the reverse, that every
+// SecurityCheckName appears in the array. If a future check type is added to
+// the union in audit-security.ts but not to the array above, `_MissingFromArray`
+// resolves to the missing name(s), the conditional resolves to `never`, and
+// the assignment fails compilation. Refresh the array, ship the fix.
+type _MissingFromArray = Exclude<SecurityCheckName, (typeof securityCheckNameValues)[number]>;
+const _securityCheckExhaustive: [_MissingFromArray] extends [never] ? true : never = true;
+void _securityCheckExhaustive;
+
 // VersionSource = "package.json" | ... | null — inline literal in
 // audit.ts and audit-cd.ts; not exported as a named type, so we list it
 // directly. The nullability is expressed via .nullable() in each schema.
@@ -171,6 +181,7 @@ export const auditSecurityOutputShape = {
       status: z.enum(checkStatusValues),
       evidence: z.array(z.string()),
       recommendation: z.string().optional(),
+      optional: z.boolean().optional(),
     }),
   ),
   summary: z.object({
@@ -182,4 +193,15 @@ export const auditSecurityOutputShape = {
     verdict: z.enum(["hardened", "needs-attention", "soft"]),
     issues: z.array(z.string()),
   }),
+};
+
+// ---- seed_security_guidance ----
+
+export const seedSecurityGuidanceOutputShape = {
+  repoPath: z.string(),
+  filePath: z.string(),
+  matchedStarter: z.string().nullable(),
+  status: z.enum(["created", "exists", "overwritten"]),
+  bytesWritten: z.number(),
+  relativePath: z.string(),
 };
