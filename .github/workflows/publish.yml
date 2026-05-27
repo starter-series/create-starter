@@ -87,15 +87,20 @@ jobs:
       - name: Build
         run: npm run build
 
+      # `--provenance` is redundant under npm trusted publishing (GA 2025-07):
+      # the registry auto-generates and signs a provenance attestation when the
+      # publish call carries an OIDC token. Keeping the flag would be a stale
+      # signal — published behavior is identical. .mcpb gets its own SLSA
+      # attestation via attest-build-provenance below.
       - name: npm publish --dry-run
         if: inputs.dry_run == true
         run: |
           echo "=== DRY RUN: no tarball will be uploaded to the registry ==="
-          npm publish --provenance --access public --dry-run
+          npm publish --access public --dry-run
 
       - name: npm publish
         if: github.event_name == 'push' || inputs.dry_run == false
-        run: npm publish --provenance --access public
+        run: npm publish --access public
 
       - name: Build Claude Desktop Extension (.mcpb)
         run: npm run bundle:mcpb

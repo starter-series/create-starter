@@ -11,7 +11,8 @@ export type SecurityCheckName =
   | "ignore-scripts"
   | "dependabot"
   | "secret-scanning"
-  | "claude-code-security-review";
+  | "claude-code-security-review"
+  | "claude-security-guidance";
 
 export type CheckStatus = "present" | "missing" | "partial" | "not-applicable";
 
@@ -307,7 +308,38 @@ function checkClaudeCodeSecurityReview(
     status: "missing",
     evidence: [],
     recommendation:
-      "Pre-wire anthropics/claude-code-security-review Action on PR — AI-based security review complements CodeQL",
+      "Pre-wire anthropics/claude-code-security-review Action on PR — AI-based security review on diffs, complements CodeQL",
+  };
+}
+
+/**
+ * Detects Anthropic's Claude Code Security Guidance Plugin (released 2026-05-26).
+ * The plugin reads org-specific rules from a repo-root `claude-security-guidance.md`
+ * file and uses them as an in-session guard while Claude is writing code — a
+ * different layer than this tool's static CI audit. Recommend installing both.
+ */
+function checkClaudeSecurityGuidance(repoPath: string): SecurityCheckResult {
+  const candidates = [
+    "claude-security-guidance.md",
+    ".claude-security-guidance.md",
+    ".claude/security-guidance.md",
+  ];
+  const found = candidates
+    .map((p) => join(repoPath, p))
+    .filter((p) => existsSync(p));
+  if (found.length > 0) {
+    return {
+      name: "claude-security-guidance",
+      status: "present",
+      evidence: found.map((p) => p.replace(repoPath + "/", "")),
+    };
+  }
+  return {
+    name: "claude-security-guidance",
+    status: "missing",
+    evidence: [],
+    recommendation:
+      "Add a `claude-security-guidance.md` at repo root with org-specific security rules. Anthropic's Claude Code Security Guidance Plugin (2026-05-26) reads this file as an in-session guard while Claude writes code. Complements (does not replace) the post-PR `claude-code-security-review` Action and this static CI audit.",
   };
 }
 
@@ -331,6 +363,7 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
     checkDependabot(abs),
     checkSecretScanning(workflows, abs),
     checkClaudeCodeSecurityReview(workflows),
+    checkClaudeSecurityGuidance(abs),
   ];
 
   const summary = {

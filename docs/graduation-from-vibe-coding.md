@@ -1,6 +1,8 @@
 # Graduating from Lovable, Bolt, and v0 to production
 
-> You built a working app in a vibe-coding platform. Now you need GitHub Actions, multi-target deploy, and "ship it without the platform lock-in." This guide walks you through that handoff using `create-starter`.
+> You built a working app in a vibe-coding platform. Now you want the option to deploy *anywhere* — your own VPS, multiple stores, multiple registries — instead of being limited to one platform's defaults. This guide walks you through that handoff using `create-starter`.
+>
+> This isn't about "escaping" any platform. As of 2026-05, Vercel, Cloudflare, and Netlify are all evolving into "Agentic Infrastructure" providers — each excellent for the workloads they target. Graduation just gives you **vendor diversity**: the freedom to pick a different target per app without rewriting your CI/CD every time.
 
 **Languages**: English (this file) · [한국어](graduation-from-vibe-coding.ko.md)
 
@@ -10,16 +12,16 @@
 
 This guide is for you if:
 
-- ✅ Your app works on the platform but you need a **non-default deploy target** (your own VPS, GHCR, Cloudflare Pages, App Store, Chrome Web Store, npm, PyPI…)
+- ✅ Your app would benefit from a **different deploy target** (your own VPS, GHCR, Cloudflare Workers/Pages, App Store, Chrome Web Store, npm, PyPI…) than your current platform's default
 - ✅ You want **GitHub Actions logs** for CI/CD steps the platform hides
 - ✅ You want to **stop paying token costs** for repeated build cycles
-- ✅ You want **CI-side security gates** (gitleaks, CodeQL, OIDC publish) before code reaches production
+- ✅ You want **CI-side supply-chain security gates** (gitleaks, CodeQL, OIDC publish, supply-chain attestations) before code reaches production
 - ✅ Your code is **already in GitHub** (Lovable's sync, Bolt's export, v0's git panel)
 
 It is **not** for you if:
 
 - ❌ You're happy with the platform's auto-deploy and don't need GitHub Actions
-- ❌ Your app fits a single platform's stack (e.g., Next.js on Vercel) and you don't plan to move
+- ❌ Your app fits exactly one platform's stack (e.g., Next.js on Vercel) and you have no other reason to add complexity
 
 ---
 
@@ -61,18 +63,21 @@ You'll get three reports:
 
 ## Step 2 — Pick a target
 
-The platform you came from defaulted to its own infra (Lovable → Netlify/Vercel, Bolt → Netlify, v0 → Vercel). The graduation question is **where you want to ship now**. Pick the matching starter:
+Each vibe-coding platform has a sensible default (Lovable → Netlify/Vercel, Bolt → Netlify, v0 → Vercel). Graduation gives you the **option** to ship to a different target when one of your apps would be a better fit elsewhere. Pick the matching starter:
 
 | Your app | Recommended target | Starter |
 |----------|-------------------|---------|
 | Next.js / Vite / React app on **your own VPS** | Docker + GHCR + SSH | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) |
 | **Static site** (HTML/CSS + light JS) | Cloudflare Pages | [`cloudflare-pages`](https://github.com/starter-series/cloudflare-pages-starter) |
+| **Claude / voice agent** (server-side runtime) | Cloudflare Workers + Claude Managed Agents | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) (adapter) — see note below |
 | **Browser extension** (already MV3) | CWS + AMO | [`browser-extension`](https://github.com/starter-series/browser-extension-starter) |
 | **Cross-platform desktop app** | electron-builder + code signing | [`electron-app`](https://github.com/starter-series/electron-app-starter) |
 | **Mobile app** | Expo + EAS | [`react-native`](https://github.com/starter-series/react-native-starter) |
 | **Discord/Telegram bot** | Docker + Railway/Fly | [`discord-bot`](https://github.com/starter-series/discord-bot-starter) / [`telegram-bot`](https://github.com/starter-series/telegram-bot-starter) |
 | **Reusable library** | npm OIDC trusted publishing | [`npm-package`](https://github.com/starter-series/npm-package-starter) |
 | **Python tool / agent** | PyPI OIDC trusted publishing | [`python-mcp-server`](https://github.com/starter-series/python-mcp-server-starter) |
+
+> **Claude / voice agent on Cloudflare Workers (added 2026-05)** — Anthropic and Cloudflare announced Claude Managed Agents on Cloudflare Workers (2026-05-19); the `@cloudflare/voice` SDK shipped a week later (2026-05-26). For now the path is: build with `docker-deploy` (containerized) or hand-write a Wrangler config; a dedicated `cloudflare-workers-agent` starter is on the roadmap once the Managed Agents API stabilizes.
 
 **Most common path**: vibe-coded React/Next/Vite SPA → `docker-deploy` (any VPS you own) or `cloudflare-pages` (free, unlimited bandwidth).
 

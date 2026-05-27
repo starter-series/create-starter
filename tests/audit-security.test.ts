@@ -173,6 +173,52 @@ jobs:
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("flags claude-security-guidance as missing when claude-security-guidance.md is absent", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((c) => c.name === "claude-security-guidance")!;
+      assert.equal(c.status, "missing");
+      assert.match(c.recommendation ?? "", /claude-security-guidance\.md/);
+      // Should explicitly position as complementary, not competing
+      assert.match(c.recommendation ?? "", /in-session/i);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("recognizes claude-security-guidance.md at repo root as present", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      writeFileSync(
+        join(dir, "claude-security-guidance.md"),
+        "# Security guidance\n\n- No string-concat SQL.\n- No `eval`.\n",
+      );
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((c) => c.name === "claude-security-guidance")!;
+      assert.equal(c.status, "present");
+      assert.deepEqual(c.evidence, ["claude-security-guidance.md"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("also accepts .claude/security-guidance.md as evidence", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      mkdirSync(join(dir, ".claude"), { recursive: true });
+      writeFileSync(join(dir, ".claude", "security-guidance.md"), "# rules\n");
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((c) => c.name === "claude-security-guidance")!;
+      assert.equal(c.status, "present");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("auditSecurity — ecosystem detection", () => {

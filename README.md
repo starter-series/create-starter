@@ -188,6 +188,24 @@ Audit (each takes an optional `path` arg, default = MCP server cwd; all read-onl
 - Extraction happens in a sibling `.<name>-incomplete-<rand>` dir; on any failure (network, corrupt archive, extraction error) the tmp dir is removed. The final path only appears via an atomic `rename` once everything succeeded.
 - `git init` failures are logged to stderr but do not fail the scaffold; the project is usable without a `.git` directory.
 
+## Supply-chain security pre-wired
+
+Every Starter Series template ships with the 9 checks `audit_security` looks for — no opt-in required:
+
+| Check | What it catches |
+|---|---|
+| **gitleaks** (SHA256-pinned manual install) | Committed secrets in code or history |
+| **CodeQL** (weekly + PR) | Static analysis for JS/TS/Python |
+| **Dependency audit** (`npm audit --audit-level=moderate` / `pip-audit`) | Known CVEs in transitive deps |
+| **License check** | GPL/AGPL contamination |
+| **`--ignore-scripts`** on every `npm/pnpm/yarn install` | Malicious postinstall scripts |
+| **Dependabot grouped updates** | Lockfile-conflict storms from one-by-one bumps |
+| **GitHub secret scanning + push protection** | Tokens leaked at push time |
+| **`anthropics/claude-code-security-review`** Action on PR | AI-based diff review |
+| **`claude-security-guidance.md`** *(this is the only one you write)* | Org-specific rules consumed by Anthropic's in-session [Claude Code Security Guidance Plugin](https://www.anthropic.com/news/claude-code-plugins) (released 2026-05-26) |
+
+This was Vercel's stack during their 2026-04-21 npm supply-chain incident — they pre-empted compromise via the same pre-wired checks plus Socket/npm/GitHub coordination. The Starter Series ships those checks pre-wired in every starter.
+
 ## License
 
 MIT © heznpc

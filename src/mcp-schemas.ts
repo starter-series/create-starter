@@ -81,6 +81,7 @@ const securityCheckNameValues = [
   "dependabot",
   "secret-scanning",
   "claude-code-security-review",
+  "claude-security-guidance",
 ] as const satisfies readonly SecurityCheckName[];
 
 // VersionSource = "package.json" | ... | null — inline literal in
