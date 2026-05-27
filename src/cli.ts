@@ -5,6 +5,10 @@ import { getTemplate, templates } from "./templates.js";
 import { auditRelease, formatAuditReport } from "./audit.js";
 import { auditCd, formatAuditCdReport } from "./audit-cd.js";
 import { auditSecurity, formatAuditSecurityReport } from "./audit-security.js";
+import {
+  seedSecurityGuidance,
+  formatSeedSecurityGuidanceReport,
+} from "./seed-security-guidance.js";
 import { readVersion } from "./version.js";
 
 const HELP = `create-starter — scaffold and audit Starter Series projects.
@@ -24,6 +28,9 @@ Arguments
                            VS Marketplace, GitHub Releases) for publish drift
   audit-security [path]    Audit CI security hygiene (gitleaks, CodeQL, audit,
                            --ignore-scripts, Dependabot, etc.)
+  seed-security-guidance [path] [--force]
+                           Generate a starter claude-security-guidance.md
+                           tailored to the detected Starter Series template
                            (path defaults to the current directory)
 
 Options
@@ -135,6 +142,35 @@ async function runAuditSubcommand<R>(
   }
 }
 
+/**
+ * Standalone helper for `seed-security-guidance` because it accepts an
+ * additional `--force` flag — different shape from the audit family.
+ */
+function runSeedSecurityGuidance(argv: string[]): number {
+  if (argv.includes("-h") || argv.includes("--help")) {
+    process.stdout.write(HELP);
+    return 0;
+  }
+  const force = argv.includes("--force") || argv.includes("-f");
+  const extras = argv.filter((a) => !a.startsWith("-"));
+  if (extras.length > 1) {
+    process.stderr.write(
+      `error: 'seed-security-guidance' accepts at most one path, got: ${extras.join(" ")}\n`,
+    );
+    return 2;
+  }
+  const path = extras[0] ?? process.cwd();
+  try {
+    const report = seedSecurityGuidance({ repoPath: path, force });
+    process.stdout.write(formatSeedSecurityGuidanceReport(report));
+    // "exists" without --force is informational, not a failure.
+    return 0;
+  } catch (err) {
+    process.stderr.write(`error: ${(err as Error).message}\n`);
+    return 1;
+  }
+}
+
 export async function runCli(argv: string[]): Promise<number> {
   if (argv[0] === "audit") {
     return runAuditSubcommand(
@@ -162,6 +198,9 @@ export async function runCli(argv: string[]): Promise<number> {
       formatAuditSecurityReport,
       (r) => r.overall.verdict === "soft",
     );
+  }
+  if (argv[0] === "seed-security-guidance") {
+    return runSeedSecurityGuidance(argv.slice(1));
   }
 
   let parsed: Parsed;

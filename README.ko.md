@@ -188,6 +188,24 @@ Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동
 - 추출은 sibling `.<name>-incomplete-<rand>` 디렉터리에서 진행. 네트워크/손상 아카이브/추출 실패 등 어느 단계든 실패하면 tmp 디렉터리 제거. 최종 경로는 모든 작업이 성공한 뒤에만 atomic `rename`으로 노출.
 - `git init` 실패는 stderr 경고로만 남기고 scaffold 자체는 성공. `.git` 디렉터리 없이도 프로젝트 사용 가능.
 
+## 공급망 보안 pre-wired
+
+모든 Starter Series 템플릿은 `audit_security`가 검사하는 9개 항목을 기본 탑재 — 추가 설정 불필요:
+
+| 체크 | 무엇을 잡나 |
+|---|---|
+| **gitleaks** (SHA256-pinned 수동 설치) | 코드/히스토리에 커밋된 시크릿 |
+| **CodeQL** (주간 + PR) | JS/TS/Python 정적 분석 |
+| **의존성 audit** (`npm audit --audit-level=moderate` / `pip-audit`) | transitive deps의 알려진 CVE |
+| **License check** | GPL/AGPL 오염 |
+| 모든 `npm/pnpm/yarn install`에 **`--ignore-scripts`** | 악성 postinstall 스크립트 |
+| **Dependabot grouped updates** | 1개씩 bump하는 lockfile 충돌 폭풍 방지 |
+| **GitHub secret scanning + push protection** | push 시점 토큰 누출 |
+| PR에 **`anthropics/claude-code-security-review`** Action | AI 기반 diff 리뷰 |
+| **`claude-security-guidance.md`** *(이것만 직접 작성)* | Anthropic in-session [Claude Code Security Guidance Plugin](https://www.anthropic.com/news/claude-code-plugins) (2026-05-26 출시)이 읽는 조직별 규칙 |
+
+2026-04-21 Vercel npm 공급망 사고 때 Vercel이 사용한 stack과 같은 구성 — 같은 pre-wired 체크 + Socket/npm/GitHub 협력으로 침해를 사전 차단함. Starter Series는 그 체크를 모든 starter에 pre-wire해서 출고.
+
 ## 라이선스
 
 MIT © heznpc

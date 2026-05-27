@@ -4,8 +4,8 @@
   "name": "create-starter",
   "display_name": "create-starter",
   "version": "0.4.0",
-  "description": "Scaffold projects from the Starter Series templates — MCP server, Claude Code skill, and CLI.",
-  "long_description": "Downloads a Starter Series template (Discord bot, Telegram bot, Docker deploy, MCP server, and more), substitutes placeholders, handles Python package renames, and runs git init. Input is Zod-validated, extraction is atomic via sibling tmp directory, and downloads have retry/timeout/size limits.",
+  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
+  "long_description": "Downloads a Starter Series template (Discord bot, Telegram bot, Docker deploy, MCP server, and more), substitutes placeholders, handles Python package renames, and runs git init. Input is Zod-validated, extraction is atomic via sibling tmp directory, and downloads have retry/timeout/size limits. Beyond scaffolding, surfaces release / CD / security audit primitives (audit_release, audit_cd, audit_security) and a seed_security_guidance generator — all callable as slash commands, MCP tools, or CLI subcommands.",
   "author": {
     "name": "heznpc",
     "url": "https://github.com/heznpc"
@@ -32,7 +32,8 @@
     {"name": "create_project", "description": "Scaffold a new project from a Starter Series template"},
     {"name": "audit_release", "description": "Diagnose release-readiness against the Starter Series quality bar (matched starter, version-vs-tag drift, CHANGELOG drift, publish-workflow kind)"},
     {"name": "audit_cd", "description": "Check per-destination publish drift across npm, PyPI, Open VSX, VS Marketplace, AMO, and GitHub Releases via public read APIs"},
-    {"name": "audit_security", "description": "Check baseline CI security hygiene (gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning, claude-code-security-review)"}
+    {"name": "audit_security", "description": "Check baseline CI security hygiene (gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning, claude-code-security-review, claude-security-guidance.md)"},
+    {"name": "seed_security_guidance", "description": "Generate a starter claude-security-guidance.md at the repo root, tailored to the detected Starter Series template. Consumed in-session by Anthropic's Claude Code Security Guidance Plugin."}
   ],
   "compatibility": {"runtimes": {"node": ">=22"}}
 }

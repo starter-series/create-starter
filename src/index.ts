@@ -15,9 +15,14 @@ import {
   type AuditSecurityReport,
 } from "./audit-security.js";
 import {
+  seedSecurityGuidance,
+  formatSeedSecurityGuidanceReport,
+} from "./seed-security-guidance.js";
+import {
   auditReleaseOutputShape,
   auditCdOutputShape,
   auditSecurityOutputShape,
+  seedSecurityGuidanceOutputShape,
 } from "./mcp-schemas.js";
 import { readVersion } from "./version.js";
 
@@ -210,7 +215,7 @@ async function runMcpServer(): Promise<void> {
     "audit_security",
     {
       description:
-        "Audit a local repo for baseline security CI hygiene against the Starter Series quality bar: gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning hints, and claude-code-security-review Action. Read-only.",
+        "Audit a local repo for baseline security CI hygiene against the Starter Series quality bar: gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning hints, claude-code-security-review Action, and claude-security-guidance.md. Read-only.",
       inputSchema: auditPathInput,
       outputSchema: auditSecurityOutputShape,
     },
@@ -225,6 +230,48 @@ async function runMcpServer(): Promise<void> {
         return {
           content: [
             { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "seed_security_guidance",
+    {
+      description:
+        "Generate a starter `claude-security-guidance.md` at the repo root, tailored to the detected Starter Series template. The file is consumed in-session by Anthropic's Claude Code Security Guidance Plugin (released 2026-05-26) as a guard while Claude writes code. Use `force: true` to overwrite an existing file.",
+      inputSchema: {
+        path: z
+          .string()
+          .optional()
+          .describe(
+            "Path to the repo (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+          ),
+        force: z
+          .boolean()
+          .optional()
+          .describe(
+            "Overwrite an existing claude-security-guidance.md. Default false (returns status='exists' instead).",
+          ),
+      },
+      outputSchema: seedSecurityGuidanceOutputShape,
+    },
+    async ({ path: repoPath, force }) => {
+      try {
+        const report = seedSecurityGuidance({ repoPath, force });
+        return {
+          content: [{ type: "text" as const, text: formatSeedSecurityGuidanceReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `seed_security_guidance failed: ${(e as Error).message}`,
+            },
           ],
           isError: true,
         };

@@ -1,7 +1,7 @@
 {
   "name": "@starter-series/create",
   "version": "0.4.0",
-  "description": "Scaffold and audit Starter Series projects — MCP server, Claude Code skill, and CLI with release/CD/security audit primitives",
+  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
@@ -29,6 +29,10 @@
     "bootstrap"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/starter-series/create-starter.git"
@@ -67,6 +71,8 @@
     "fast-uri": "^3.1.2",
     "hono": "^4.12.21",
     "@hono/node-server": "^1.19.13",
-    "ip-address": "^10.2.0"
+    "ip-address": "^10.2.0",
+    "qs": "^6.15.2",
+    "tmp": "^0.2.7"
   }
 }
