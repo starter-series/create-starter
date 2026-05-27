@@ -1,20 +1,37 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { stderrLogger } from "./log.js";
 import { formatScaffoldReport, scaffold } from "./scaffold.js";
 import { getTemplate, templates } from "./templates.js";
+import { auditRelease, formatAuditReport } from "./audit.js";
+import { auditCd, formatAuditCdReport } from "./audit-cd.js";
+import { auditSecurity, formatAuditSecurityReport } from "./audit-security.js";
+import {
+  seedSecurityGuidance,
+  formatSeedSecurityGuidanceReport,
+} from "./seed-security-guidance.js";
+import { readVersion } from "./version.js";
 
-const HELP = `create-starter — scaffold a project from the Starter Series.
+const HELP = `create-starter — scaffold and audit Starter Series projects.
 
 Usage
   create-starter <name> --template <id> [options]
+  create-starter audit [path]
+  create-starter audit-cd [path]
+  create-starter audit-security [path]
   create-starter --list
   create-starter --help
 
 Arguments
   <name>                   Project name ([A-Za-z0-9_-], must start with alnum)
+  audit [path]             Audit release-readiness (CHANGELOG, version, workflow)
+  audit-cd [path]          Audit deploy destinations (npm, PyPI, AMO, Open VSX,
+                           VS Marketplace, GitHub Releases) for publish drift
+  audit-security [path]    Audit CI security hygiene (gitleaks, CodeQL, audit,
+                           --ignore-scripts, Dependabot, etc.)
+  seed-security-guidance [path] [--force]
+                           Generate a starter claude-security-guidance.md
+                           tailored to the detected Starter Series template
+                           (path defaults to the current directory)
 
 Options
   -t, --template <id>      Template ID (see --list)
@@ -31,6 +48,9 @@ Environment
 Examples
   create-starter my-bot --template discord-bot
   create-starter my-api --template mcp-server --description "My coding agent"
+  create-starter audit
+  create-starter audit /path/to/repo
+  create-starter audit-cd
   create-starter --list
 `;
 
@@ -87,18 +107,102 @@ function printTemplates(): void {
   }
 }
 
-function readVersion(): string {
+/**
+ * Shared shell for every `audit*` subcommand: parses the single optional
+ * positional path, defers to the audit function, prints the formatted report,
+ * and maps the verdict to an exit code. Each subcommand is a one-liner around
+ * this helper.
+ */
+async function runAuditSubcommand<R>(
+  argv: string[],
+  name: string,
+  fn: (path: string) => Promise<R>,
+  format: (report: R) => string,
+  isFailure: (report: R) => boolean,
+): Promise<number> {
+  if (argv.includes("-h") || argv.includes("--help")) {
+    process.stdout.write(HELP);
+    return 0;
+  }
+  const extras = argv.filter((a) => !a.startsWith("-"));
+  if (extras.length > 1) {
+    process.stderr.write(
+      `error: '${name}' accepts at most one path, got: ${extras.join(" ")}\n`,
+    );
+    return 2;
+  }
+  const path = extras[0] ?? process.cwd();
   try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const pkgPath = join(here, "..", "package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
-    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
-  } catch {
-    return "0.0.0";
+    const report = await fn(path);
+    process.stdout.write(format(report));
+    return isFailure(report) ? 1 : 0;
+  } catch (err) {
+    process.stderr.write(`error: ${(err as Error).message}\n`);
+    return 1;
+  }
+}
+
+/**
+ * Standalone helper for `seed-security-guidance` because it accepts an
+ * additional `--force` flag — different shape from the audit family.
+ */
+function runSeedSecurityGuidance(argv: string[]): number {
+  if (argv.includes("-h") || argv.includes("--help")) {
+    process.stdout.write(HELP);
+    return 0;
+  }
+  const force = argv.includes("--force") || argv.includes("-f");
+  const extras = argv.filter((a) => !a.startsWith("-"));
+  if (extras.length > 1) {
+    process.stderr.write(
+      `error: 'seed-security-guidance' accepts at most one path, got: ${extras.join(" ")}\n`,
+    );
+    return 2;
+  }
+  const path = extras[0] ?? process.cwd();
+  try {
+    const report = seedSecurityGuidance({ repoPath: path, force });
+    process.stdout.write(formatSeedSecurityGuidanceReport(report));
+    // "exists" without --force is informational, not a failure.
+    return 0;
+  } catch (err) {
+    process.stderr.write(`error: ${(err as Error).message}\n`);
+    return 1;
   }
 }
 
 export async function runCli(argv: string[]): Promise<number> {
+  if (argv[0] === "audit") {
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit",
+      auditRelease,
+      formatAuditReport,
+      (r) => r.shipReady.verdict === "no",
+    );
+  }
+  if (argv[0] === "audit-cd") {
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit-cd",
+      (p) => auditCd(p),
+      formatAuditCdReport,
+      (r) => r.overall.verdict === "needs-publish",
+    );
+  }
+  if (argv[0] === "audit-security") {
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit-security",
+      auditSecurity,
+      formatAuditSecurityReport,
+      (r) => r.overall.verdict === "soft",
+    );
+  }
+  if (argv[0] === "seed-security-guidance") {
+    return runSeedSecurityGuidance(argv.slice(1));
+  }
+
   let parsed: Parsed;
   try {
     parsed = parseCliArgs(argv);

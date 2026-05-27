@@ -7,65 +7,96 @@ import { stderrLogger } from "./log.js";
 import { formatScaffoldReport, SAFE_NAME, scaffold } from "./scaffold.js";
 import { getTemplate, templates } from "./templates.js";
 import { runCli } from "./cli.js";
-
-const PKG_VERSION = "0.3.0";
+import { auditRelease, formatAuditReport, type AuditReport } from "./audit.js";
+import { auditCd, formatAuditCdReport, type AuditCdReport } from "./audit-cd.js";
+import {
+  auditSecurity,
+  formatAuditSecurityReport,
+  type AuditSecurityReport,
+} from "./audit-security.js";
+import {
+  seedSecurityGuidance,
+  formatSeedSecurityGuidanceReport,
+} from "./seed-security-guidance.js";
+import {
+  auditReleaseOutputShape,
+  auditCdOutputShape,
+  auditSecurityOutputShape,
+  seedSecurityGuidanceOutputShape,
+} from "./mcp-schemas.js";
+import { readVersion } from "./version.js";
 
 async function runMcpServer(): Promise<void> {
   const server = new McpServer({
     name: "create-starter",
-    version: PKG_VERSION,
+    version: readVersion(),
   });
 
-  server.tool(
+  server.registerTool(
     "list_templates",
-    "List all available Starter Series project templates",
-    {},
-    async () => ({
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify(
-            templates.map(({ id, name, description, stack, category }) => ({
-              id,
-              name,
-              description,
-              stack,
-              category,
-            })),
-            null,
-            2,
-          ),
-        },
-      ],
-    }),
+    {
+      description: "List all available Starter Series project templates",
+      outputSchema: {
+        templates: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            description: z.string(),
+            stack: z.array(z.string()),
+            category: z.enum(["mcp", "package", "bot", "app", "extension", "deploy"]),
+          }),
+        ),
+      },
+    },
+    async () => {
+      const summary = templates.map(({ id, name, description, stack, category }) => ({
+        id,
+        name,
+        description,
+        stack,
+        category,
+      }));
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify(summary, null, 2) }],
+        structuredContent: { templates: summary },
+      };
+    },
   );
 
-  server.tool(
+  server.registerTool(
     "create_project",
-    "Scaffold a new project from a Starter Series template",
     {
-      template: z
-        .enum(templates.map((t) => t.id) as [string, ...string[]])
-        .describe("Template ID (use list_templates to see options)"),
-      name: z
-        .string()
-        .regex(
-          SAFE_NAME,
-          "Must start with [A-Za-z0-9] and contain only [A-Za-z0-9_-] (no dots, spaces, or path separators)",
-        )
-        .describe("Project name (alphanumeric start, '-' or '_' only)"),
-      description: z
-        .string()
-        .optional()
-        .describe("One-line project description"),
-      output_dir: z
-        .string()
-        .optional()
-        .describe("Output directory (defaults to ./<name>, relative to the MCP server's cwd)"),
-      init_git: z
-        .boolean()
-        .optional()
-        .describe("Initialize a fresh git repo after scaffold (default: true)"),
+      description: "Scaffold a new project from a Starter Series template",
+      inputSchema: {
+        template: z
+          .enum(templates.map((t) => t.id) as [string, ...string[]])
+          .describe("Template ID (use list_templates to see options)"),
+        name: z
+          .string()
+          .regex(
+            SAFE_NAME,
+            "Must start with [A-Za-z0-9] and contain only [A-Za-z0-9_-] (no dots, spaces, or path separators)",
+          )
+          .describe("Project name (alphanumeric start, '-' or '_' only)"),
+        description: z
+          .string()
+          .optional()
+          .describe("One-line project description"),
+        output_dir: z
+          .string()
+          .optional()
+          .describe("Output directory (defaults to ./<name>, relative to the MCP server's cwd)"),
+        init_git: z
+          .boolean()
+          .optional()
+          .describe("Initialize a fresh git repo after scaffold (default: true)"),
+      },
+      outputSchema: {
+        path: z.string(),
+        filesExtracted: z.number(),
+        filesReplaced: z.number(),
+        gitInitialized: z.boolean(),
+      },
     },
     async ({ template: templateId, name, description, output_dir, init_git }) => {
       const tmpl = getTemplate(templateId);
@@ -93,6 +124,12 @@ async function runMcpServer(): Promise<void> {
               text: formatScaffoldReport(name, tmpl, result),
             },
           ],
+          structuredContent: {
+            path: result.path,
+            filesExtracted: result.filesExtracted,
+            filesReplaced: result.filesReplaced,
+            gitInitialized: result.gitInitialized,
+          },
         };
       } catch (e) {
         return {
@@ -100,6 +137,140 @@ async function runMcpServer(): Promise<void> {
             {
               type: "text" as const,
               text: `Failed to scaffold: ${(e as Error).message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // Each audit_* tool is registered inline because TS can't infer the generic
+  // OutputArgs through a helper without the call sites looking even uglier.
+  // The shape is intentionally identical: optional path, structured report,
+  // text mirror via format*, isError on throw.
+
+  const auditPathInput = {
+    path: z
+      .string()
+      .optional()
+      .describe(
+        "Path to the repo to audit (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+      ),
+  };
+
+  server.registerTool(
+    "audit_release",
+    {
+      description:
+        "Audit a local repo for release-readiness against the Starter Series quality bar. Detects matched starter, CHANGELOG drift vs merged PRs, version-bump status, and publish-workflow presence. Read-only; never mutates the repo.",
+      inputSchema: auditPathInput,
+      outputSchema: auditReleaseOutputShape,
+    },
+    async ({ path: repoPath }) => {
+      try {
+        const report: AuditReport = await auditRelease(repoPath ?? process.cwd());
+        return {
+          content: [{ type: "text" as const, text: formatAuditReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            { type: "text" as const, text: `audit_release failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "audit_cd",
+    {
+      description:
+        "Check whether the local repo's version has been published to its destination registries (npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases). Makes outbound HTTPS requests to public registry APIs; never mutates. Reports per-destination drift (in-sync / needs-publish / local-stale / not-found).",
+      inputSchema: auditPathInput,
+      outputSchema: auditCdOutputShape,
+    },
+    async ({ path: repoPath }) => {
+      try {
+        const report: AuditCdReport = await auditCd(repoPath ?? process.cwd());
+        return {
+          content: [{ type: "text" as const, text: formatAuditCdReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            { type: "text" as const, text: `audit_cd failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "audit_security",
+    {
+      description:
+        "Audit a local repo for baseline security CI hygiene against the Starter Series quality bar: gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning hints, claude-code-security-review Action, and claude-security-guidance.md. Read-only.",
+      inputSchema: auditPathInput,
+      outputSchema: auditSecurityOutputShape,
+    },
+    async ({ path: repoPath }) => {
+      try {
+        const report: AuditSecurityReport = await auditSecurity(repoPath ?? process.cwd());
+        return {
+          content: [{ type: "text" as const, text: formatAuditSecurityReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "seed_security_guidance",
+    {
+      description:
+        "Generate a starter `claude-security-guidance.md` at the repo root, tailored to the detected Starter Series template. The file is consumed in-session by Anthropic's Claude Code Security Guidance Plugin (released 2026-05-26) as a guard while Claude writes code. Use `force: true` to overwrite an existing file.",
+      inputSchema: {
+        path: z
+          .string()
+          .optional()
+          .describe(
+            "Path to the repo (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+          ),
+        force: z
+          .boolean()
+          .optional()
+          .describe(
+            "Overwrite an existing claude-security-guidance.md. Default false (returns status='exists' instead).",
+          ),
+      },
+      outputSchema: seedSecurityGuidanceOutputShape,
+    },
+    async ({ path: repoPath, force }) => {
+      try {
+        const report = seedSecurityGuidance({ repoPath, force });
+        return {
+          content: [{ type: "text" as const, text: formatSeedSecurityGuidanceReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `seed_security_guidance failed: ${(e as Error).message}`,
             },
           ],
           isError: true,

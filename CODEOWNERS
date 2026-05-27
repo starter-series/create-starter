@@ -1,0 +1,23 @@
+# Code owners for create-starter.
+#
+# Solo-maintainer project — @heznpc reviews everything by default.
+# This file exists so future contributors see a routing target and so
+# branch protection's "require review from code owners" hook works once
+# enabled.
+#
+# Syntax: <path-pattern> <owner>
+# Last matching pattern wins.
+
+# Default owner for the entire repo.
+*                                       @heznpc
+
+# Anything that ships to users (npm, .mcpb, MCP Registry).
+/manifest.json                          @heznpc
+/server.json                            @heznpc
+/package.json                           @heznpc
+/.github/workflows/publish.yml          @heznpc
+/.github/workflows/publish-mcp-registry.yml  @heznpc
+
+# Audit primitives — the "this is what we promise other repos" surface.
+/src/audit*.ts                          @heznpc
+/src/starter-detect.ts                  @heznpc

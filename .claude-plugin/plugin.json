@@ -1,9 +1,10 @@
 {
   "name": "create-starter",
-  "version": "0.3.0",
-  "description": "Scaffold projects from the Starter Series templates — MCP server and Claude Code skill in one plugin.",
+  "version": "0.4.0",
+  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
   "author": {
-    "name": "heznpc"
+    "name": "heznpc",
+    "url": "https://github.com/heznpc"
   },
   "homepage": "https://github.com/starter-series/create-starter",
   "repository": "https://github.com/starter-series/create-starter",
@@ -13,6 +14,10 @@
     "starter",
     "scaffold",
     "template",
+    "audit",
+    "release",
+    "publish-drift",
+    "supply-chain-security",
     "claude-code",
     "bootstrap"
   ]

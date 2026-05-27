@@ -1,7 +1,7 @@
 {
   "name": "@starter-series/create",
-  "version": "0.3.0",
-  "description": "Scaffold projects from the Starter Series templates \u2014 MCP server, Claude Code skill, and CLI",
+  "version": "0.4.0",
+  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
@@ -29,6 +29,10 @@
     "bootstrap"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/starter-series/create-starter.git"
@@ -41,23 +45,34 @@
   "files": [
     "dist",
     "skills",
+    "docs/graduation-from-vibe-coding.md",
+    "docs/graduation-from-vibe-coding.ko.md",
     ".claude-plugin",
     ".mcp.json",
     "README.md",
     "README.ko.md",
+    "CHANGELOG.md",
     "LICENSE",
     "server.json"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "tar": "^7.5.0",
-    "zod": "^3.24.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.1",
     "@types/tar": "^6.1.13",
-    "tsx": "^4.21.0",
-    "typescript": "^5.7.0"
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "fast-uri": "^3.1.2",
+    "hono": "^4.12.21",
+    "@hono/node-server": "^1.19.13",
+    "ip-address": "^10.2.0",
+    "qs": "^6.15.2",
+    "tmp": "^0.2.7"
   }
 }
