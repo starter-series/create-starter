@@ -64,12 +64,10 @@ jobs:
           # version mismatch (e.g., Claude Desktop ext manager vs npm). Gate
           # publish on parity.
           PKG_VERSION="${{ steps.pkg.outputs.version }}"
-          declare -A FILES=(
-            [server.json]="server.json"
-            [manifest.json]="manifest.json"
-            [.claude-plugin/plugin.json]=".claude-plugin/plugin.json"
-          )
-          for path in server.json manifest.json .claude-plugin/plugin.json; do
+          # Single source of truth for the manifest set. Add a new entry here
+          # to extend the parity check — the loop iterates this array.
+          MANIFESTS=(server.json manifest.json .claude-plugin/plugin.json)
+          for path in "${MANIFESTS[@]}"; do
             if [ ! -f "$path" ]; then
               echo "::error::$path not found at repo root"
               exit 1

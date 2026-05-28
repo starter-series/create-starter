@@ -331,9 +331,19 @@ function checkClaudeSecurityGuidance(repoPath: string): SecurityCheckResult {
     ".claude-security-guidance.md",
     ".claude/security-guidance.md",
   ];
+  // Restrict to regular files (and symlinks to files). existsSync alone would
+  // return true for a directory named `claude-security-guidance.md/`, which
+  // the consuming plugin can't parse as markdown — reporting PRESENT in that
+  // case would mislead the operator. statSync follows symlinks by design.
   const found = candidates
     .map((p) => join(repoPath, p))
-    .filter((p) => existsSync(p));
+    .filter((p) => {
+      try {
+        return statSync(p).isFile();
+      } catch {
+        return false;
+      }
+    });
   if (found.length > 0) {
     return {
       name: "claude-security-guidance",
@@ -377,27 +387,30 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
     checkClaudeSecurityGuidance(abs),
   ];
 
+  // `summary` counts CORE checks only — the same set the verdict aggregator
+  // uses below. This keeps `summary.missing === 0 ⇔ verdict === "hardened"`
+  // as a stable invariant, so a CI gate written as
+  // `if [ $(... | jq .summary.missing) -ne 0 ]` agrees with the verdict.
+  //
+  // Optional checks (e.g. `claude-security-guidance`, a repo-author content
+  // file rather than a CI primitive) are not part of the CI quality bar.
+  // Their per-entry status is still visible in `checks[]` and is surfaced in
+  // `issues[]` when missing/partial — they're not hidden, they just don't
+  // show up in the headline counts callers gate on.
+  const core = checks.filter((c) => !c.optional);
   const summary = {
-    present: checks.filter((c) => c.status === "present").length,
-    missing: checks.filter((c) => c.status === "missing").length,
-    partial: checks.filter((c) => c.status === "partial").length,
+    present: core.filter((c) => c.status === "present").length,
+    missing: core.filter((c) => c.status === "missing").length,
+    partial: core.filter((c) => c.status === "partial").length,
   };
 
   const issues = checks
     .filter((c) => c.status === "missing" || c.status === "partial")
     .map((c) => `${c.name} (${c.status}): ${c.recommendation ?? "no detail"}`);
 
-  // Verdict aggregator only counts CORE checks (CI primitives). Optional
-  // checks like `claude-security-guidance` (a repo-author content file) are
-  // surfaced in `issues` but don't downgrade the verdict on their own — a
-  // repo that has the full CI baseline stays HARDENED even before the author
-  // writes their org-specific guidance file.
-  const coreMissing = checks.filter((c) => c.status === "missing" && !c.optional).length;
-  const corePartial = checks.filter((c) => c.status === "partial" && !c.optional).length;
-
   let verdict: AuditSecurityReport["overall"]["verdict"];
-  if (coreMissing === 0 && corePartial === 0) verdict = "hardened";
-  else if (coreMissing <= 2) verdict = "needs-attention";
+  if (summary.missing === 0 && summary.partial === 0) verdict = "hardened";
+  else if (summary.missing <= 2) verdict = "needs-attention";
   else verdict = "soft";
 
   return {

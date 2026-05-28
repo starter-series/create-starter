@@ -87,11 +87,21 @@ const securityCheckNameValues = [
 // Compile-time exhaustiveness gate: `satisfies` only proves every array element
 // is a valid SecurityCheckName — it does NOT prove the reverse, that every
 // SecurityCheckName appears in the array. If a future check type is added to
-// the union in audit-security.ts but not to the array above, `_MissingFromArray`
-// resolves to the missing name(s), the conditional resolves to `never`, and
-// the assignment fails compilation. Refresh the array, ship the fix.
+// the union in audit-security.ts but not to the array above, _MissingFromArray
+// resolves to the missing name(s) and the assignment below fails to compile.
+//
+// The branded error type names the missing variants in the TS2322 message:
+//   Type 'true' is not assignable to type
+//     '{ __exhaustivenessFailure: "Add these SecurityCheckName variants to securityCheckNameValues"; missing: "new-check"; }'.
+// — so the developer sees WHICH check is missing without manually diffing.
 type _MissingFromArray = Exclude<SecurityCheckName, (typeof securityCheckNameValues)[number]>;
-const _securityCheckExhaustive: [_MissingFromArray] extends [never] ? true : never = true;
+type _ExhaustivenessGate<M> = [M] extends [never]
+  ? true
+  : {
+      readonly __exhaustivenessFailure: "Add these SecurityCheckName variants to securityCheckNameValues";
+      readonly missing: M;
+    };
+const _securityCheckExhaustive: _ExhaustivenessGate<_MissingFromArray> = true;
 void _securityCheckExhaustive;
 
 // VersionSource = "package.json" | ... | null — inline literal in

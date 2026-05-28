@@ -117,7 +117,15 @@ function buildContent(matchedId: StarterId | null): string {
   const starterSection = matchedId
     ? (SECTIONS_BY_STARTER[matchedId] ?? FALLBACK_SECTION)
     : FALLBACK_SECTION;
-  const today = new Date().toISOString().slice(0, 10);
+  // Local YYYY-MM-DD so the stamp matches the user's wall clock (and the
+  // git commit timestamp they're about to make). `toISOString().slice(0,10)`
+  // would return UTC, which is off-by-a-day for users running near local
+  // midnight in non-UTC zones.
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const today = `${yyyy}-${mm}-${dd}`;
   return `# Security guidance
 
 This file is read by Anthropic's Claude Code Security Guidance Plugin
@@ -152,8 +160,8 @@ export function seedSecurityGuidance(
   }
 
   const filePath = join(abs, "claude-security-guidance.md");
-  const exists = existsSync(filePath);
-  if (exists && !options.force) {
+  const preExisted = existsSync(filePath);
+  if (preExisted && !options.force) {
     return {
       repoPath: abs,
       filePath,
@@ -166,13 +174,34 @@ export function seedSecurityGuidance(
 
   const sig = extractStarterSignals(abs);
   const content = buildContent(sig.id);
-  writeFileSync(filePath, content, "utf-8");
+
+  // Atomic create-or-overwrite with TOCTOU guard. Without `force`, use the
+  // `wx` flag so the kernel atomically refuses a write when another process
+  // created the file between our existsSync above and this call. We then
+  // re-report it as `status: "exists"` (the contract the caller asked for),
+  // not silently overwrite. With `force`, use `w` which truncates.
+  const flag = options.force ? "w" : "wx";
+  try {
+    writeFileSync(filePath, content, { encoding: "utf-8", flag });
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+      return {
+        repoPath: abs,
+        filePath,
+        matchedStarter: null,
+        status: "exists",
+        bytesWritten: 0,
+        relativePath: relative(abs, filePath),
+      };
+    }
+    throw e;
+  }
 
   return {
     repoPath: abs,
     filePath,
     matchedStarter: sig.id,
-    status: exists ? "overwritten" : "created",
+    status: preExisted ? "overwritten" : "created",
     bytesWritten: Buffer.byteLength(content, "utf-8"),
     relativePath: relative(abs, filePath),
   };
