@@ -204,6 +204,72 @@ describe("auditRelease — publish workflow detection", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("detects a cd.yml publish workflow (filename has no release/publish/deploy keyword)", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "1.0.0" }),
+      );
+      mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+      writeFileSync(
+        join(dir, ".github", "workflows", "cd.yml"),
+        `name: CD\non:\n  workflow_dispatch: {}\njobs:\n  publish:\n    steps:\n      - run: npm publish --provenance --access public\n`,
+      );
+      const r = await auditRelease(dir);
+      assert.notEqual(r.publishWorkflow.likelyKind, "missing");
+      assert.equal(r.publishWorkflow.likelyKind, "publish-manual");
+      assert.deepEqual(r.publishWorkflow.files, ["cd.yml"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("detects a publish workflow by content alone (no filename keyword)", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "1.0.0" }),
+      );
+      mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+      // Filename matches none of release|publish|deploy|cd; detection must come
+      // from the action-gh-release step in the body.
+      writeFileSync(
+        join(dir, ".github", "workflows", "ship.yml"),
+        `name: Ship\non:\n  release:\n    types: [published]\njobs:\n  go:\n    steps:\n      - uses: softprops/action-gh-release@v2\n`,
+      );
+      const r = await auditRelease(dir);
+      assert.notEqual(r.publishWorkflow.likelyKind, "missing");
+      assert.deepEqual(r.publishWorkflow.files, ["ship.yml"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not detect a workflow that only mentions a publish action in a comment", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "1.0.0" }),
+      );
+      mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+      // A changelog-mirror workflow that *explains* the release flow in a
+      // comment must not be misclassified as a publisher (regression: a bare
+      // `action-gh-release` mention in a comment used to match).
+      writeFileSync(
+        join(dir, ".github", "workflows", "update-changelog.yml"),
+        `name: Update CHANGELOG\n# Released repos use softprops/action-gh-release with generate_release_notes.\non:\n  release:\n    types: [published]\njobs:\n  go:\n    steps:\n      - run: git push\n`,
+      );
+      const r = await auditRelease(dir);
+      assert.equal(r.publishWorkflow.likelyKind, "missing");
+      assert.deepEqual(r.publishWorkflow.files, []);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("auditRelease — format", () => {
