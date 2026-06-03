@@ -163,6 +163,8 @@ MCP-compatible clients that integrate registry discovery can install it by name 
 
 Ownership is verified through GitHub OIDC (namespace `io.github.starter-series/*`) and npm tarball inspection (`package.json#mcpName`). See [`.github/workflows/publish-mcp-registry.yml`](https://github.com/starter-series/create-starter/blob/main/.github/workflows/publish-mcp-registry.yml) for the publish flow.
 
+For npm release setup (trusted-publisher registration, including the post-2026-05-20 allowed-action step), see [`docs/RELEASING.md`](docs/RELEASING.md).
+
 ## Tools
 
 Scaffolding:
