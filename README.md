@@ -15,7 +15,7 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 - **MCP Registry entry** — `io.github.starter-series/create-starter`, OIDC-verified namespace, npm tarball cross-checked.
 - **`audit_release`** — detects matched starter, version vs last-tag drift, CHANGELOG drift vs merged PRs (`git log <tag>..HEAD`), publish-workflow kind (release-please / publish-on-tag / auto-release).
 - **`audit_cd`** — probes npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases for per-destination publish drift (in-sync / needs-publish / local-stale / not-found / unsupported).
-- **`audit_security`** — checks 8 CI hygiene items: gitleaks (with pin check), CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action. This repo passes 8/8 HARDENED.
+- **`audit_security`** — checks 9 items: 8 core CI primitives (gitleaks with pin check, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action) plus the optional repo-author `claude-security-guidance.md`. The 8 core checks gate the HARDENED verdict; this repo passes 8/8 core.
 - **Graduation guide** — `docs/graduation-from-vibe-coding.md` (+ Korean): five-step path from Lovable/Bolt/v0 exports to GitHub Actions + a real deploy target, using the three audit primitives.
 
 ## Planned
@@ -27,7 +27,7 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 - **One binary, two surfaces.** CLI and MCP stdio share one scaffolding engine. Argv decides which surface answers. No duplicated logic for "the same thing called from a human vs an agent".
 - **Atomic on failure.** Extraction happens in a sibling `.<name>-incomplete-<rand>` directory and only renames into the final path on success. Network failure, corrupt archive, partial write — none of them leaves a half-scaffolded directory behind.
 - **Audit is first-class.** Templates ship a security baseline (gitleaks pinned to SHA, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review). The three audit commands check whether a downstream repo still matches that bar — turning the baseline from a one-time scaffold into an ongoing gate.
-- **Eat your own dogfood.** This repo passes `audit_security` 8/8 HARDENED. If the tool that audits other repos can't pass its own check, the bar isn't real.
+- **Eat your own dogfood.** This repo passes `audit_security` 8/8 core checks (HARDENED); the 9th is the optional `claude-security-guidance.md`. If the tool that audits other repos can't pass its own bar, the bar isn't real.
 - **Read-only outside its sandbox.** Downloads are capped (50 MB, 30 s timeout, 3 retries). Relative output paths cannot escape cwd; absolute paths are accepted only as explicit user intent. `git init` failure is logged but non-fatal.
 
 ## Non-goals

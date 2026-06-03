@@ -125,11 +125,31 @@ function detectPublishWorkflow(repoPath: string): PublishWorkflowReport {
     return { files: [], likelyKind: "missing" };
   }
 
+  // Detect publish/release workflows by CONTENT, not just filename. Many repos
+  // name their CD workflow `cd.yml` (or `cd-ios.yml`, `cd-firefox.yml`), which
+  // no `release|publish|deploy` filename keyword matches — a filename-only
+  // filter false-negatives them and yields a bogus "no publish workflow"
+  // blocker. Keep the filename keywords as a fast path; otherwise fall back to
+  // recognized publish/release actions and commands in the file body.
+  const filenameHit = (f: string) =>
+    /(?:release|publish|deploy)/i.test(f) || /(?:^|[-_])cd(?:[-_.]|$)/i.test(f);
+  const publishContent =
+    /(?:\b(?:npm|pnpm|yarn)\s+publish\b|\bvsce\s+publish\b|\bovsx\s+publish\b|\beas\s+submit\b|gh-action-pypi-publish|action-gh-release|\bgh\s+release\s+create\b|\btwine\s+upload\b|wrangler[^\n]*\bdeploy\b|docker\/build-push-action)/i;
+
   const candidates: { file: string; content: string }[] = [];
   for (const f of entries) {
-    if (!/(release|publish|deploy)/i.test(f)) continue;
     const content = safeReadText(join(dir, f));
-    if (content) candidates.push({ file: f, content });
+    if (!content) continue;
+    // Match publish signals against non-comment lines only, so a workflow that
+    // merely *mentions* a publish action in a comment (e.g. update-changelog.yml
+    // explaining the release flow) is not misdetected as a publisher.
+    const codeOnly = content
+      .split("\n")
+      .filter((l) => !/^\s*#/.test(l))
+      .join("\n");
+    if (filenameHit(f) || publishContent.test(codeOnly)) {
+      candidates.push({ file: f, content });
+    }
   }
   if (candidates.length === 0) return { files: [], likelyKind: "missing" };
 
