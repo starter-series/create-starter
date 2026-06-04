@@ -153,18 +153,23 @@ export function seedSecurityGuidance(
 
   const filePath = join(abs, "claude-security-guidance.md");
   const exists = existsSync(filePath);
+
+  // Detect the starter up front so the "exists" branch can report which starter
+  // the repo matched too (previously hardcoded null, which made an existing-file
+  // report misleadingly say "no starter matched").
+  const sig = extractStarterSignals(abs);
+
   if (exists && !options.force) {
     return {
       repoPath: abs,
       filePath,
-      matchedStarter: null,
+      matchedStarter: sig.id,
       status: "exists",
       bytesWritten: 0,
       relativePath: relative(abs, filePath),
     };
   }
 
-  const sig = extractStarterSignals(abs);
   const content = buildContent(sig.id);
   writeFileSync(filePath, content, "utf-8");
 
@@ -185,6 +190,7 @@ export function formatSeedSecurityGuidanceReport(r: SeedSecurityGuidanceResult):
   if (r.status === "exists") {
     lines.push(`Status: EXISTS (no change)`);
     lines.push(`  - ${r.relativePath} already present.`);
+    lines.push(`  - Matched starter: ${r.matchedStarter ?? "(none — fallback section used)"}`);
     lines.push(`  - Re-run with --force to overwrite with the latest template.`);
     return lines.join("\n") + "\n";
   }

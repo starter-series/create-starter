@@ -121,11 +121,50 @@ function walkFiles(dir: string): string[] {
   return results;
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Characters that, if adjacent to a replacement key, mean the match is part of a
+// LONGER identifier and must be left alone. Project names are `[A-Za-z0-9_-]+`,
+// so a key flanked by any of these on either side is a sub-token of a bigger
+// name (e.g. replacing "my-application" inside "my-application-utils") and is
+// skipped. This is the "word boundary" the project's naming scheme needs —
+// stricter than `\b`, which treats `-`/`_` as boundaries.
+const IDENT_CHAR = /[A-Za-z0-9_-]/;
+
+/**
+ * Build a single regex that matches any of `keys` only when it stands as a
+ * whole identifier token (not flanked by other identifier chars). Keys are
+ * alternated longest-first so a longer key wins over a shorter one that is its
+ * prefix (regex alternation is leftmost-longest only within a position when
+ * ordered this way).
+ */
+function buildReplacementRegex(keys: string[]): RegExp {
+  const alternation = keys
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join("|");
+  // Lookbehind/lookahead enforce the token boundary without consuming the
+  // surrounding chars (so adjacent matches still work).
+  return new RegExp(`(?<![A-Za-z0-9_-])(?:${alternation})(?![A-Za-z0-9_-])`, "g");
+}
+
 function applyReplacements(
   dir: string,
   replacements: Record<string, string>,
 ): number {
-  if (Object.keys(replacements).length === 0) return 0;
+  const keys = Object.keys(replacements);
+  if (keys.length === 0) return 0;
+  // Single pass per file with a token-boundary regex. A single combined regex
+  // (instead of sequential replaceAll per key) means an already-substituted
+  // value can never be re-matched by a later key, and longest-key-first
+  // ordering means "my-application-utils" is not clobbered by a "my-application"
+  // key. The boundary guards stop a short name (e.g. "app") from corrupting an
+  // embedding word (e.g. a description containing "application").
+  void IDENT_CHAR; // documented above; boundary is inlined in the regex
+  const re = buildReplacementRegex(keys);
   let filesChanged = 0;
   for (const file of walkFiles(dir)) {
     if (!isTextFile(file)) continue;
@@ -136,14 +175,14 @@ function applyReplacements(
       continue;
     }
     let changed = false;
-    for (const [from, to] of Object.entries(replacements)) {
-      if (content.includes(from)) {
-        content = content.replaceAll(from, to);
-        changed = true;
-      }
-    }
+    const next = content.replace(re, (match) => {
+      const to = replacements[match];
+      if (to === undefined) return match; // not an exact key (shouldn't happen)
+      changed = true;
+      return to;
+    });
     if (changed) {
-      writeFileSync(file, content, "utf-8");
+      writeFileSync(file, next, "utf-8");
       filesChanged++;
     }
   }
@@ -224,6 +263,12 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
   const tmpSuffix = `-incomplete-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const workDest = join(parentDir, `.${basename(finalDest)}${tmpSuffix}`);
 
+  // Once the build (download → extract → customize) succeeds and we begin the
+  // finalize step, a failure must NOT delete the built tree — we'd be throwing
+  // away good work. Flip this true right before finalize so the catch knows to
+  // preserve workDest instead of cleaning it up.
+  let buildComplete = false;
+
   try {
     const url = archiveUrl(opts.template);
     const ref = opts.template.ref ?? "main";
@@ -272,10 +317,46 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
 
     const gitInitialized = initGit ? tryGitInit(workDest, logger) : false;
 
-    // `rm` with force:true tolerates a missing path; handles the case where
-    // finalDest was pre-created empty (e.g., mkdir then scaffold into it).
+    // The build is done; from here a failure preserves workDest.
+    buildComplete = true;
+
+    // Finalize: move the built tree into place. The start-of-run guard checked
+    // finalDest was absent/empty, but that was BEFORE the (network-bound)
+    // download — plenty of time for another process to create files there. So
+    // re-check IMMEDIATELY before the destructive rm and only remove finalDest
+    // when it is still absent or empty; never blindly `rm -rf` a path that now
+    // has content. NOTE: this narrows but does not eliminate the race — the
+    // check-then-rm-then-rename window is not truly atomic on any filesystem.
+    let existingEntries: string[] | null;
+    try {
+      existingEntries = readdirSync(finalDest);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+        existingEntries = null; // absent — the happy path
+      } else {
+        throw e;
+      }
+    }
+    if (existingEntries !== null && existingEntries.length > 0) {
+      throw new Error(
+        `Destination "${finalDest}" became non-empty during scaffold; refusing to overwrite. ` +
+          `The built project is preserved at "${workDest}".`,
+      );
+    }
+    // Safe: finalDest is absent or empty. force:true tolerates the absent case
+    // and the empty-dir case (rm removes the empty dir so rename can recreate).
     await rm(finalDest, { recursive: true, force: true });
-    await rename(workDest, finalDest);
+
+    try {
+      await rename(workDest, finalDest);
+    } catch (renameErr) {
+      // Rename failed (e.g. cross-device, permissions, a racing creator). Do
+      // NOT delete workDest — a successful build must survive a finalize hiccup.
+      logger.warn(
+        `finalize rename failed (${(renameErr as Error).message}); the built project is preserved at "${workDest}".`,
+      );
+      throw renameErr;
+    }
 
     logger.info(`done: ${finalDest}`);
     return {
@@ -285,9 +366,14 @@ export async function scaffold(opts: ScaffoldOptions): Promise<ScaffoldResult> {
       gitInitialized,
     };
   } catch (err) {
-    await rm(workDest, { recursive: true, force: true }).catch(() => {
-      /* cleanup best effort */
-    });
+    // Only clean up the tmp build dir if the failure happened DURING the build
+    // (download/extract/customize). If the build completed and finalize failed,
+    // leave workDest in place so the user keeps their scaffolded project.
+    if (!buildComplete) {
+      await rm(workDest, { recursive: true, force: true }).catch(() => {
+        /* cleanup best effort */
+      });
+    }
     throw err;
   }
 }

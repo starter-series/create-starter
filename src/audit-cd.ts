@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { parseGitHubRemote, semverCompare, tryGit } from "./audit-helpers.js";
+import { extractSemver, parseGitHubRemote, semverCompare, tryGit } from "./audit-helpers.js";
 import { extractStarterSignals } from "./starter-detect.js";
 
 export type DestinationName =
@@ -55,6 +55,65 @@ function classifyDrift(local: string | null, published: string | null): CdStatus
   return "local-stale";
 }
 
+/**
+ * Like {@link classifyDrift} but for a published *git tag* that may carry a
+ * monorepo / scoped prefix (`@scope/x@1.2.3`, `release-1.2.3`). Extract the
+ * trailing SemVer before comparing; if the tag has no extractable SemVer we
+ * can't meaningfully compare, so we treat it as in-sync (no phantom drift)
+ * rather than fabricating a stale/needs-publish verdict from prefix noise.
+ */
+function classifyDriftTag(local: string | null, tag: string | null): CdStatus {
+  if (!local || !tag) return "not-found";
+  const publishedVer = extractSemver(tag);
+  if (publishedVer === null) return "in-sync";
+  return classifyDrift(local, publishedVer);
+}
+
+/**
+ * Template placeholder identifiers that ship inside the Starter Series
+ * scaffolds. A repo still carrying one of these has not been configured for a
+ * real destination yet — reporting `not-found` / `needs-publish` against the
+ * literal placeholder is misleading. We surface a distinct `unsupported`
+ * ("template not configured") status instead so the auditor nudges the user to
+ * set a real name rather than to "publish my-mcp-server".
+ */
+const TEMPLATE_PLACEHOLDERS = new Set([
+  "my-mcp-server",
+  "my-package",
+  "my-discord-bot",
+  "my-telegram-bot",
+  "my-extension",
+  "my-vscode-extension",
+  "my-electron-app",
+  "my-app",
+  "my-site",
+  "my-service",
+]);
+
+function isPlaceholderIdentifier(id: string): boolean {
+  const lower = id.toLowerCase();
+  // Bare or scoped placeholder package names (e.g. "my-mcp-server",
+  // "@you/my-mcp-server"), and the AMO template gecko id.
+  const bare = lower.includes("/") ? lower.slice(lower.lastIndexOf("/") + 1) : lower;
+  if (TEMPLATE_PLACEHOLDERS.has(bare)) return true;
+  // AMO template id from the browser-extension starter manifest.
+  if (lower.includes("{your-extension-id}") || lower === "{your-extension-id}@example.com") {
+    return true;
+  }
+  return false;
+}
+
+function placeholderReport(name: DestinationName, identifier: string): DestinationReport {
+  return {
+    name,
+    identifier,
+    publishedVersion: null,
+    publishedAt: null,
+    status: "unsupported",
+    detail: "template not configured — set a real package/extension identifier before publishing",
+  };
+}
+
 // ---- fetch with timeout ----
 
 async function fetchJson(
@@ -83,12 +142,22 @@ async function fetchJson(
 
 // ---- destination probes ----
 
+/** Pick the highest SemVer key from an npm `versions` map (or any tag map). */
+function highestVersion(versions: string[]): string | null {
+  let best: string | null = null;
+  for (const v of versions) {
+    if (best === null || semverCompare(v, best) > 0) best = v;
+  }
+  return best;
+}
+
 async function probeNpm(
   pkgName: string,
   localVersion: string | null,
   f: typeof fetch,
   timeout: number,
 ): Promise<DestinationReport> {
+  if (isPlaceholderIdentifier(pkgName)) return placeholderReport("npm", pkgName);
   const url = `https://registry.npmjs.org/${encodeURIComponent(pkgName)}`;
   const res = await fetchJson(url, f, timeout);
   if (!res.ok) {
@@ -114,13 +183,46 @@ async function probeNpm(
   const data = res.data as Record<string, unknown>;
   const distTags = (data["dist-tags"] ?? {}) as Record<string, string>;
   const time = (data.time ?? {}) as Record<string, string>;
-  const latest = distTags.latest ?? null;
+  const versionsMap = (data.versions ?? {}) as Record<string, unknown>;
+
+  // Prefer dist-tags.latest. A package published only under prerelease tags
+  // (e.g. `next`, `beta`) has NO `dist-tags.latest` even though it IS
+  // published — falling through to "not-found" there is wrong (the old bug).
+  // Fall back to the highest version across all dist-tags, then the highest
+  // key in the full `versions` map, so a prerelease-only package reports its
+  // real highest published version instead of a phantom 404.
+  let published: string | null = distTags.latest ?? null;
+  let detail: string | undefined;
+  if (!published) {
+    const tagVersions = Object.values(distTags).filter((v): v is string => typeof v === "string");
+    const versionKeys = Object.keys(versionsMap);
+    published = highestVersion(tagVersions) ?? highestVersion(versionKeys);
+    if (published) {
+      const tagNames = Object.keys(distTags).join(", ") || "none";
+      detail = `no dist-tags.latest (published only as: ${tagNames}); comparing against highest published version ${published}`;
+    }
+  }
+
+  if (!published) {
+    // Reachable on the registry but with zero versions — genuinely nothing
+    // published (e.g. an unpublished/security-holding placeholder doc).
+    return {
+      name: "npm",
+      identifier: pkgName,
+      publishedVersion: null,
+      publishedAt: null,
+      status: "not-found",
+      detail: "package exists on npm but has no published versions",
+    };
+  }
+
   return {
     name: "npm",
     identifier: pkgName,
-    publishedVersion: latest,
-    publishedAt: latest && time[latest] ? time[latest] : null,
-    status: classifyDrift(localVersion, latest),
+    publishedVersion: published,
+    publishedAt: published && time[published] ? time[published] : null,
+    status: classifyDrift(localVersion, published),
+    detail,
   };
 }
 
@@ -292,6 +394,7 @@ async function probeAmo(
   f: typeof fetch,
   timeout: number,
 ): Promise<DestinationReport> {
+  if (isPlaceholderIdentifier(geckoId)) return placeholderReport("amo", geckoId);
   const url = `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(geckoId)}/`;
   const res = await fetchJson(url, f, timeout);
   if (!res.ok) {
@@ -347,7 +450,10 @@ function probeGithubReleases(
       identifier: id,
       publishedVersion: tag,
       publishedAt: data.publishedAt ?? null,
-      status: classifyDrift(localVersion, tag),
+      // Tags may be monorepo/scoped (`@scope/x@1.2.3`, `release-1.2.3`); extract
+      // the trailing SemVer before comparing so a prefixed tag at the same
+      // version doesn't read as phantom drift.
+      status: classifyDriftTag(localVersion, tag),
     };
   } catch (e) {
     type ExecErr = Error & { stderr?: Buffer | string; stdout?: Buffer | string };
@@ -414,22 +520,56 @@ export async function auditCd(
   const destinations: DestinationReport[] = [];
   const probes: Promise<DestinationReport>[] = [];
 
+  // Wrap every probe so a single malformed payload can't abort the whole
+  // multi-destination audit. A probe that throws synchronously (e.g. a version
+  // returned as a JSON number, so `.replace` throws inside the probe) or
+  // rejects is converted into a per-destination `{status:'error'}` report; the
+  // other destinations still resolve. `name`/`identifier` are captured here so
+  // the error report is still attributable even though the probe never got far
+  // enough to build its own.
+  const safeProbe = (
+    name: DestinationName,
+    identifier: string,
+    run: () => Promise<DestinationReport>,
+  ): Promise<DestinationReport> =>
+    run().catch((e: unknown) => ({
+      name,
+      identifier,
+      publishedVersion: null,
+      publishedAt: null,
+      status: "error" as const,
+      detail: `probe crashed: ${(e as Error)?.message ?? String(e)}`,
+    }));
+
   // Per-starter destination plan
   switch (sig.id) {
     case "mcp-server":
     case "npm-package":
-      if (sig.npmName) probes.push(probeNpm(sig.npmName, sig.localVersion, f, timeout));
+      if (sig.npmName) {
+        probes.push(
+          safeProbe("npm", sig.npmName, () => probeNpm(sig.npmName!, sig.localVersion, f, timeout)),
+        );
+      }
       break;
     case "mcp-server-python":
-      if (sig.pyName) probes.push(probePyPI(sig.pyName, sig.localVersion, f, timeout));
+      if (sig.pyName) {
+        probes.push(
+          safeProbe("pypi", sig.pyName, () => probePyPI(sig.pyName!, sig.localVersion, f, timeout)),
+        );
+      }
       break;
     case "vscode-extension":
       if (sig.vscodePublisher && sig.vscodeName) {
+        const ovId = `${sig.vscodePublisher}.${sig.vscodeName}`;
         probes.push(
-          probeOpenVsx(sig.vscodePublisher, sig.vscodeName, sig.localVersion, f, timeout),
+          safeProbe("open-vsx", ovId, () =>
+            probeOpenVsx(sig.vscodePublisher!, sig.vscodeName!, sig.localVersion, f, timeout),
+          ),
         );
         probes.push(
-          probeVsMarketplace(sig.vscodePublisher, sig.vscodeName, sig.localVersion, f, timeout),
+          safeProbe("vs-marketplace", ovId, () =>
+            probeVsMarketplace(sig.vscodePublisher!, sig.vscodeName!, sig.localVersion, f, timeout),
+          ),
         );
       } else {
         destinations.push({
@@ -444,7 +584,9 @@ export async function auditCd(
       break;
     case "browser-extension":
       if (sig.geckoId) {
-        probes.push(probeAmo(sig.geckoId, sig.localVersion, f, timeout));
+        probes.push(
+          safeProbe("amo", sig.geckoId, () => probeAmo(sig.geckoId!, sig.localVersion, f, timeout)),
+        );
       } else {
         destinations.push({
           name: "amo",
