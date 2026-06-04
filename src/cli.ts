@@ -107,6 +107,44 @@ function printTemplates(): void {
   }
 }
 
+// Exit-code contract (documented so callers/CI can branch on it):
+//   0 — success / clean verdict
+//   1 — RESULT failure: the audit ran fine but the repo is not OK
+//       (BLOCKED ship verdict, needs-publish CD drift, soft security posture)
+//   2 — OPERATIONAL failure: bad usage, unknown flag, or the audit could not
+//       run at all (e.g. path is not a directory). Distinguishing these lets a
+//       caller tell "your repo needs work" (1) from "the tool couldn't run" (2).
+const EXIT_OK = 0;
+const EXIT_RESULT_FAILURE = 1;
+const EXIT_OP_FAILURE = 2;
+
+/**
+ * Partition a subcommand's argv into positionals and flags, rejecting any flag
+ * not in `allowedFlags`. Returns an error string for the caller to print, or
+ * the parsed shape. Strict: a typo like `--forrce` errors instead of being
+ * silently dropped (the old `startsWith('-')` filter swallowed unknowns).
+ */
+function partitionSubcommandArgs(
+  argv: string[],
+  allowedFlags: Set<string>,
+): { positionals: string[]; flags: Set<string> } | { error: string } {
+  const positionals: string[] = [];
+  const flags = new Set<string>();
+  for (const a of argv) {
+    if (a.startsWith("-")) {
+      // Support `--flag=value` form by checking the flag name before `=`.
+      const flagName = a.split("=", 1)[0];
+      if (!allowedFlags.has(flagName)) {
+        return { error: `unknown option '${a}'` };
+      }
+      flags.add(flagName);
+    } else {
+      positionals.push(a);
+    }
+  }
+  return { positionals, flags };
+}
+
 /**
  * Shared shell for every `audit*` subcommand: parses the single optional
  * positional path, defers to the audit function, prints the formatted report,
@@ -122,24 +160,31 @@ async function runAuditSubcommand<R>(
 ): Promise<number> {
   if (argv.includes("-h") || argv.includes("--help")) {
     process.stdout.write(HELP);
-    return 0;
+    return EXIT_OK;
   }
-  const extras = argv.filter((a) => !a.startsWith("-"));
-  if (extras.length > 1) {
+  const parsed = partitionSubcommandArgs(argv, new Set(["-h", "--help"]));
+  if ("error" in parsed) {
+    process.stderr.write(`error: ${parsed.error} (run '${name} --help')\n`);
+    return EXIT_OP_FAILURE;
+  }
+  if (parsed.positionals.length > 1) {
     process.stderr.write(
-      `error: '${name}' accepts at most one path, got: ${extras.join(" ")}\n`,
+      `error: '${name}' accepts at most one path, got: ${parsed.positionals.join(" ")}\n`,
     );
-    return 2;
+    return EXIT_OP_FAILURE;
   }
-  const path = extras[0] ?? process.cwd();
+  const path = parsed.positionals[0] ?? process.cwd();
+  let report: R;
   try {
-    const report = await fn(path);
-    process.stdout.write(format(report));
-    return isFailure(report) ? 1 : 0;
+    report = await fn(path);
   } catch (err) {
+    // The audit could not RUN (e.g. path is not a directory) — operational
+    // failure, distinct from a clean run that returns a BLOCKED verdict.
     process.stderr.write(`error: ${(err as Error).message}\n`);
-    return 1;
+    return EXIT_OP_FAILURE;
   }
+  process.stdout.write(format(report));
+  return isFailure(report) ? EXIT_RESULT_FAILURE : EXIT_OK;
 }
 
 /**
@@ -149,25 +194,35 @@ async function runAuditSubcommand<R>(
 function runSeedSecurityGuidance(argv: string[]): number {
   if (argv.includes("-h") || argv.includes("--help")) {
     process.stdout.write(HELP);
-    return 0;
+    return EXIT_OK;
   }
-  const force = argv.includes("--force") || argv.includes("-f");
-  const extras = argv.filter((a) => !a.startsWith("-"));
-  if (extras.length > 1) {
+  const parsed = partitionSubcommandArgs(
+    argv,
+    new Set(["-h", "--help", "-f", "--force"]),
+  );
+  if ("error" in parsed) {
     process.stderr.write(
-      `error: 'seed-security-guidance' accepts at most one path, got: ${extras.join(" ")}\n`,
+      `error: ${parsed.error} (run 'seed-security-guidance --help')\n`,
     );
-    return 2;
+    return EXIT_OP_FAILURE;
   }
-  const path = extras[0] ?? process.cwd();
+  const force = parsed.flags.has("--force") || parsed.flags.has("-f");
+  if (parsed.positionals.length > 1) {
+    process.stderr.write(
+      `error: 'seed-security-guidance' accepts at most one path, got: ${parsed.positionals.join(" ")}\n`,
+    );
+    return EXIT_OP_FAILURE;
+  }
+  const path = parsed.positionals[0] ?? process.cwd();
   try {
     const report = seedSecurityGuidance({ repoPath: path, force });
     process.stdout.write(formatSeedSecurityGuidanceReport(report));
     // "exists" without --force is informational, not a failure.
-    return 0;
+    return EXIT_OK;
   } catch (err) {
+    // Could not run (e.g. path is not a directory) — operational failure.
     process.stderr.write(`error: ${(err as Error).message}\n`);
-    return 1;
+    return EXIT_OP_FAILURE;
   }
 }
 
@@ -262,9 +317,11 @@ export async function runCli(argv: string[]): Promise<number> {
       logger: stderrLogger,
     });
     process.stdout.write(`\n${formatScaffoldReport(name, template, result)}\n\n`);
-    return 0;
+    return EXIT_OK;
   } catch (err) {
+    // Scaffolding failed to complete (download / extract / fs error) — this is
+    // an operational failure, not a "result", so use the op-failure code.
     process.stderr.write(`error: ${(err as Error).message}\n`);
-    return 1;
+    return EXIT_OP_FAILURE;
   }
 }

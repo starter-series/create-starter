@@ -37,7 +37,14 @@ const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024;
 
 export async function fetchTarball(url: string, opts: FetchOptions = {}): Promise<Buffer> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  // Treat a non-positive maxRetries as "one attempt" rather than zero. With the
+  // raw value the `for` loop never runs and we throw a NETWORK error although
+  // fetch was never called — a confusing config result. Clamp to >= 1 so a
+  // single real attempt always happens.
+  const requestedRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const maxRetries = Number.isFinite(requestedRetries) && requestedRetries >= 1
+    ? Math.floor(requestedRetries)
+    : 1;
   const maxSizeBytes = opts.maxSizeBytes ?? DEFAULT_MAX_SIZE_BYTES;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const logger = opts.logger;

@@ -113,6 +113,7 @@ export const auditReleaseOutputShape = {
     unreleasedSection: z.boolean(),
     unreleasedEntries: z.number(),
     unreleasedPrs: z.array(z.number()),
+    commitsSinceLastTag: z.number(),
     mergedPrsSinceLastTag: z.array(
       z.object({ number: z.number(), title: z.string() }),
     ),

@@ -29,6 +29,8 @@ export interface ChangelogReport {
   unreleasedSection: boolean;
   unreleasedEntries: number;
   unreleasedPrs: number[];
+  /** All substantive (non-merge) commits since the last tag. */
+  commitsSinceLastTag: number;
   mergedPrsSinceLastTag: { number: number; title: string }[];
   missingFromChangelog: { number: number; title: string }[];
 }
@@ -67,6 +69,32 @@ export interface AuditOptions {
 
 // ---- changelog parsing ----
 
+// Issue-closing keywords. A `#N` immediately preceded by one of these refers to
+// an *issue* being closed, not a PR number, so it must NOT be harvested as a PR
+// reference (it would inflate the Unreleased PR set / merged-PR set with issue
+// numbers). GitHub recognizes these (and -s/-d/-ed variants) for auto-close.
+const ISSUE_CLOSE_RE =
+  /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#\d/i;
+
+/**
+ * Harvest the PR-reference numbers from one line of text, *excluding* `#N`
+ * tokens that are issue-close references ("Fixes #12", "Closes #9"). Used for
+ * both the CHANGELOG Unreleased scan and the git-log PR scan so the two sets
+ * are apples-to-apples.
+ */
+function harvestPrRefs(line: string): number[] {
+  const out: number[] = [];
+  for (const m of line.matchAll(/#(\d{1,6})\b/g)) {
+    const idx = m.index ?? 0;
+    // Look back at the words right before this `#N`; if they're a close
+    // keyword, it's an issue ref, skip it.
+    const prefix = line.slice(Math.max(0, idx - 24), idx + m[0].length);
+    if (ISSUE_CLOSE_RE.test(prefix)) continue;
+    out.push(Number(m[1]));
+  }
+  return out;
+}
+
 function parseUnreleased(text: string): { entries: string[]; prs: number[]; found: boolean } {
   const lines = text.split(/\r?\n/);
   let started = false;
@@ -81,9 +109,10 @@ function parseUnreleased(text: string): { entries: string[]; prs: number[]; foun
     if (started) {
       const trimmed = line.trim();
       if (/^[-*]\s+/.test(trimmed)) entries.push(trimmed);
-      for (const m of line.matchAll(/#(\d{1,6})\b/g)) {
-        prs.add(Number(m[1]));
-      }
+      // Only harvest PR-context numbers; an entry like "- Fix crash (closes #9)"
+      // references issue #9, not PR #9 — counting it would falsely mark PR #9 as
+      // "covered" in the changelog.
+      for (const n of harvestPrRefs(line)) prs.add(n);
     }
   }
   return { entries, prs: [...prs].sort((a, b) => a - b), found: started };
@@ -99,7 +128,9 @@ function parseMergedPrs(gitLog: string): { number: number; title: string }[] {
       continue;
     }
     const paren = line.match(/\(#(\d+)\)\s*$/);
-    if (paren) {
+    // The trailing `(#N)` of a squash-merge is a PR ref. Guard against the
+    // (rare) `fix #N` issue-close form sitting in the trailing parens.
+    if (paren && !ISSUE_CLOSE_RE.test(line.slice(Math.max(0, (paren.index ?? 0) - 24)))) {
       out.push({ number: Number(paren[1]), title: line });
     }
   }
@@ -110,6 +141,23 @@ function parseMergedPrs(gitLog: string): { number: number; title: string }[] {
     seen.add(p.number);
     return true;
   });
+}
+
+/**
+ * Count substantive commits in a `git log --pretty=%s` block — i.e. all commit
+ * subjects that are NOT a merge-commit subject line. Used to decide "has work
+ * happened since the last tag?" independent of whether commits carry PR
+ * numbers. Squash/rebase-merge repos drop the `(#N)` suffix, so a PR-only count
+ * sees zero work and falsely reports READY; counting raw commits closes that
+ * gap.
+ */
+function countCommits(gitLog: string): number {
+  return gitLog
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+    .filter((l) => !/^Merge (?:pull request |branch |remote-tracking )/.test(l))
+    .length;
 }
 
 // ---- publish workflow detection ----
@@ -206,12 +254,22 @@ export async function auditRelease(repoPath: string): Promise<AuditReport> {
     : { entries: [], prs: [], found: false };
 
   let mergedPrs: { number: number; title: string }[] = [];
+  // Count ALL commits since the tag (not just PR-numbered ones) so rebase-merge
+  // / squash-without-PR-number repos still register that work has happened. The
+  // PR subset below is only for the CHANGELOG cross-reference.
+  let commitsSinceTag = 0;
   if (lastTag) {
     const log = tryGit(abs, ["log", `${lastTag}..HEAD`, "--pretty=%s"]);
-    if (log) mergedPrs = parseMergedPrs(log);
+    if (log) {
+      mergedPrs = parseMergedPrs(log);
+      commitsSinceTag = countCommits(log);
+    }
   } else {
     const log = tryGit(abs, ["log", "--pretty=%s", "-n", "200"]);
-    if (log) mergedPrs = parseMergedPrs(log);
+    if (log) {
+      mergedPrs = parseMergedPrs(log);
+      commitsSinceTag = countCommits(log);
+    }
   }
 
   const unreleasedPrSet = new Set(parsed.prs);
@@ -223,9 +281,15 @@ export async function auditRelease(repoPath: string): Promise<AuditReport> {
   const blockers: string[] = [];
   const warnings: string[] = [];
 
-  if (mergedPrs.length > 0 && drift === "current==tag") {
+  // Bump-required is driven by raw commit count, not PR-matched commits, so a
+  // rebase-merge repo (no `(#N)` suffixes) is no longer falsely reported READY.
+  if (commitsSinceTag > 0 && drift === "current==tag") {
+    const detail =
+      mergedPrs.length > 0
+        ? `${mergedPrs.length} merged PR(s)`
+        : `${commitsSinceTag} commit(s)`;
     blockers.push(
-      `${mergedPrs.length} merged PR(s) since tag ${lastTag} but version still ${current} — bump required`,
+      `${detail} since tag ${lastTag} but version still ${current} — bump required`,
     );
   }
   if (publishWorkflow.likelyKind === "missing" && matchedStarter.id && matchedStarter.id !== "docker-deploy") {
@@ -249,7 +313,7 @@ export async function auditRelease(repoPath: string): Promise<AuditReport> {
   if (!changelogPath) {
     warnings.push("CHANGELOG.md missing");
   }
-  if (drift === "no-tag" && mergedPrs.length > 0) {
+  if (drift === "no-tag" && commitsSinceTag > 0) {
     warnings.push("Repo has no git tags — release history cannot be inferred");
   }
 
@@ -266,6 +330,7 @@ export async function auditRelease(repoPath: string): Promise<AuditReport> {
       unreleasedSection: parsed.found,
       unreleasedEntries: parsed.entries.length,
       unreleasedPrs: parsed.prs,
+      commitsSinceLastTag: commitsSinceTag,
       mergedPrsSinceLastTag: mergedPrs,
       missingFromChangelog: missing,
     },
