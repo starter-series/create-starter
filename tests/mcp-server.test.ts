@@ -145,6 +145,7 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
     assert.deepEqual(
       names,
       [
+        "add_component",
         "audit_cd",
         "audit_release",
         "audit_security",
