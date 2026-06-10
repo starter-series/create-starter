@@ -18,22 +18,58 @@
   "documentation": "https://github.com/starter-series/create-starter#readme",
   "support": "https://github.com/starter-series/create-starter/issues",
   "license": "MIT",
-  "keywords": ["mcp", "starter", "scaffold", "template", "claude-code", "cli", "bootstrap"],
+  "keywords": [
+    "mcp",
+    "starter",
+    "scaffold",
+    "template",
+    "claude-code",
+    "cli",
+    "bootstrap"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"]
+      "args": [
+        "${__dirname}/dist/index.js"
+      ]
     }
   },
   "tools": [
-    {"name": "list_templates", "description": "List all available Starter Series project templates"},
-    {"name": "create_project", "description": "Scaffold a new project from a Starter Series template"},
-    {"name": "audit_release", "description": "Diagnose release-readiness against the Starter Series quality bar (matched starter, version-vs-tag drift, CHANGELOG drift, publish-workflow kind)"},
-    {"name": "audit_cd", "description": "Check per-destination publish drift across npm, PyPI, Open VSX, VS Marketplace, AMO, and GitHub Releases via public read APIs"},
-    {"name": "audit_security", "description": "Check baseline CI security hygiene (gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning, claude-code-security-review, claude-security-guidance.md)"},
-    {"name": "seed_security_guidance", "description": "Generate a starter claude-security-guidance.md at the repo root, tailored to the detected Starter Series template. Consumed in-session by Anthropic's Claude Code Security Guidance Plugin."}
+    {
+      "name": "list_templates",
+      "description": "List all available Starter Series project templates"
+    },
+    {
+      "name": "create_project",
+      "description": "Scaffold a new project from a Starter Series template"
+    },
+    {
+      "name": "audit_release",
+      "description": "Diagnose release-readiness against the Starter Series quality bar (matched starter, version-vs-tag drift, CHANGELOG drift, publish-workflow kind)"
+    },
+    {
+      "name": "audit_cd",
+      "description": "Check per-destination publish drift across npm, PyPI, Open VSX, VS Marketplace, AMO, and GitHub Releases via public read APIs"
+    },
+    {
+      "name": "audit_security",
+      "description": "Check baseline CI security hygiene (gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning, claude-code-security-review, claude-security-guidance.md)"
+    },
+    {
+      "name": "seed_security_guidance",
+      "description": "Generate a starter claude-security-guidance.md at the repo root, tailored to the detected Starter Series template. Consumed in-session by Anthropic's Claude Code Security Guidance Plugin."
+    },
+    {
+      "name": "add_component",
+      "description": "Lift a starter's CI/CD layer (ci / security / dependabot / maintenance) into an existing repo without re-scaffolding — dry-run by default with a per-file plan; the remediation half of the audit loop"
+    }
   ],
-  "compatibility": {"runtimes": {"node": ">=22"}}
+  "compatibility": {
+    "runtimes": {
+      "node": ">=22"
+    }
+  }
 }

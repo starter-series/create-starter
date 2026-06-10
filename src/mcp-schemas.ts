@@ -206,3 +206,30 @@ export const seedSecurityGuidanceOutputShape = {
   bytesWritten: z.number(),
   relativePath: z.string(),
 };
+
+// ---- add_component ----
+
+export const componentGroupValues = ["ci", "security", "dependabot", "maintenance", "all"] as const;
+export const planActionValues = [
+  "create",
+  "overwrite",
+  "skip-exists",
+  "identical",
+  "absent-in-starter",
+] as const;
+
+export const addComponentOutputShape = {
+  repoPath: z.string(),
+  starter: z.string(),
+  starterSource: z.enum(["explicit", "detected"]),
+  component: z.enum(componentGroupValues),
+  dryRun: z.boolean(),
+  plan: z.array(
+    z.object({
+      path: z.string(),
+      action: z.enum(planActionValues),
+    }),
+  ),
+  written: z.array(z.string()),
+  warnings: z.array(z.string()),
+};

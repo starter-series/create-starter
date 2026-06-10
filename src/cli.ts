@@ -9,6 +9,7 @@ import {
   seedSecurityGuidance,
   formatSeedSecurityGuidanceReport,
 } from "./seed-security-guidance.js";
+import { addComponent, formatAddComponentReport, type ComponentGroup } from "./add-component.js";
 import { readVersion } from "./version.js";
 
 const HELP = `create-starter — scaffold and audit Starter Series projects.
@@ -32,6 +33,12 @@ Arguments
                            Generate a starter claude-security-guidance.md
                            tailored to the detected Starter Series template
                            (path defaults to the current directory)
+  add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
+                           Lift a starter's CI/CD layer into an existing repo
+                           (groups: ci, security, dependabot, maintenance, all).
+                           Dry-run by default — prints a per-file plan; --apply
+                           writes it; --force overwrites differing files and
+                           allows a dirty git tree
 
 Options
   -t, --template <id>      Template ID (see --list)
@@ -226,6 +233,70 @@ function runSeedSecurityGuidance(argv: string[]): number {
   }
 }
 
+/**
+ * Standalone helper for `add-component` — it takes two VALUE flags
+ * (`--component`, `--starter`), which `partitionSubcommandArgs` (boolean-only)
+ * can't express. Dry-run by default; `--apply` writes the plan.
+ */
+async function runAddComponentSubcommand(argv: string[]): Promise<number> {
+  if (argv.includes("-h") || argv.includes("--help")) {
+    process.stdout.write(HELP);
+    return EXIT_OK;
+  }
+  let component: string | undefined;
+  let starter: string | undefined;
+  let apply = false;
+  let force = false;
+  const positionals: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const valueOf = (name: string): string | undefined =>
+      a.includes("=") ? a.slice(a.indexOf("=") + 1) : argv[++i];
+    if (a === "--component" || a.startsWith("--component=") || a === "-c") {
+      component = valueOf("--component");
+    } else if (a === "--starter" || a.startsWith("--starter=") || a === "-s") {
+      starter = valueOf("--starter");
+    } else if (a === "--apply") {
+      apply = true;
+    } else if (a === "--force" || a === "-f") {
+      force = true;
+    } else if (a.startsWith("-")) {
+      process.stderr.write(`error: unknown option '${a}' (run 'add-component --help')\n`);
+      return EXIT_OP_FAILURE;
+    } else {
+      positionals.push(a);
+    }
+  }
+  if ((component === undefined && argv.some((a) => a === "--component" || a === "-c")) ||
+      (starter === undefined && argv.some((a) => a === "--starter" || a === "-s"))) {
+    process.stderr.write(`error: missing value for --component/--starter\n`);
+    return EXIT_OP_FAILURE;
+  }
+  if (positionals.length > 1) {
+    process.stderr.write(
+      `error: 'add-component' accepts at most one path, got: ${positionals.join(" ")}\n`,
+    );
+    return EXIT_OP_FAILURE;
+  }
+  const path = positionals[0] ?? process.cwd();
+  try {
+    const report = await addComponent(path, {
+      component: component as ComponentGroup | undefined,
+      starter,
+      dryRun: !apply,
+      force,
+    });
+    process.stdout.write(formatAddComponentReport(report));
+    // RESULT failure: an apply left differing files unwritten (needs --force
+    // after review) — the repo is not yet at the starter bar.
+    const skipped = report.plan.some((p) => p.action === "skip-exists");
+    return !report.dryRun && skipped ? EXIT_RESULT_FAILURE : EXIT_OK;
+  } catch (err) {
+    process.stderr.write(`error: ${(err as Error).message}\n`);
+    return EXIT_OP_FAILURE;
+  }
+}
+
 export async function runCli(argv: string[]): Promise<number> {
   if (argv[0] === "audit") {
     return runAuditSubcommand(
@@ -256,6 +327,9 @@ export async function runCli(argv: string[]): Promise<number> {
   }
   if (argv[0] === "seed-security-guidance") {
     return runSeedSecurityGuidance(argv.slice(1));
+  }
+  if (argv[0] === "add-component") {
+    return runAddComponentSubcommand(argv.slice(1));
   }
 
   let parsed: Parsed;

@@ -23,7 +23,10 @@ import {
   auditCdOutputShape,
   auditSecurityOutputShape,
   seedSecurityGuidanceOutputShape,
+  addComponentOutputShape,
+  componentGroupValues,
 } from "./mcp-schemas.js";
+import { addComponent, formatAddComponentReport } from "./add-component.js";
 import { readVersion } from "./version.js";
 
 async function runMcpServer(): Promise<void> {
@@ -230,6 +233,64 @@ async function runMcpServer(): Promise<void> {
         return {
           content: [
             { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "add_component",
+    {
+      description:
+        "Lift a starter's CI/CD layer into an EXISTING repo without re-scaffolding — the remediation half of the audit loop (audit_security/audit_release diagnose; this installs the missing files from the matching starter). Components: ci (.github/workflows/ci.yml), security (codeql.yml + SECURITY.md), dependabot (dependabot.yml + auto-merge), maintenance (stale + weekly health check), or all. DRY-RUN BY DEFAULT: returns a per-file plan (create / identical / skip-exists / overwrite) and writes nothing until dry_run is false. Existing-but-different files are skipped unless force — so the dry-run plan doubles as a drift report against the starter. Never touches app code or secrets-bearing CD workflows.",
+      inputSchema: {
+        path: z
+          .string()
+          .optional()
+          .describe(
+            "Path to the repo (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+          ),
+        component: z
+          .enum(componentGroupValues)
+          .optional()
+          .describe("Which group to lift (default: all)."),
+        starter: z
+          .string()
+          .optional()
+          .describe(
+            "Template id to lift from (see list_templates). Auto-detected from the repo when omitted.",
+          ),
+        dry_run: z
+          .boolean()
+          .optional()
+          .describe("Preview only (default true). Set false to write the planned files."),
+        force: z
+          .boolean()
+          .optional()
+          .describe(
+            "Overwrite files that differ from the starter AND allow applying onto a dirty git tree. Default false.",
+          ),
+      },
+      outputSchema: addComponentOutputShape,
+    },
+    async ({ path: repoPath, component, starter, dry_run, force }) => {
+      try {
+        const report = await addComponent(repoPath ?? process.cwd(), {
+          component,
+          starter,
+          dryRun: dry_run,
+          force,
+        });
+        return {
+          content: [{ type: "text" as const, text: formatAddComponentReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            { type: "text" as const, text: `add_component failed: ${(e as Error).message}` },
           ],
           isError: true,
         };
