@@ -8,6 +8,14 @@
       "name": "create-starter",
       "source": ".",
       "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives."
+    },
+    {
+      "name": "shotkit",
+      "source": {
+        "source": "github",
+        "repo": "starter-series/shotkit"
+      },
+      "description": "Capture Chrome Web Store + social promo assets (screenshots, promo tiles, demo screencast, listing copy) from a built browser extension — bundles the capture skill."
     }
   ]
 }
