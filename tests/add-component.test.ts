@@ -250,3 +250,66 @@ describe("addComponent — starter resolution", () => {
     }
   });
 });
+
+describe("addComponent — cold-start rescue of a vibe-coded export", () => {
+  /** A Vite + React SPA, the shape a Lovable/v0/Bolt export actually has. */
+  function makeViteRepo(): string {
+    const dir = mkdtempSync(join(tmpdir(), "ac-vite-"));
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-app", version: "0.0.0", private: true,
+        scripts: { dev: "vite", build: "vite build" },
+        dependencies: { react: "^18", "react-dom": "^18" },
+        devDependencies: { vite: "^5" },
+      }),
+    );
+    git(dir, ["init", "-q"]);
+    git(dir, ["add", "."]);
+    git(dir, ["commit", "-qm", "init"]);
+    return dir;
+  }
+
+  it("detects a low-confidence deploy starter and WARNS instead of throwing", async () => {
+    const repo = makeViteRepo();
+    try {
+      const tarball = await packStarter(STARTER_FILES);
+      const r = await addComponent(repo, { fetchOptions: { fetchImpl: fakeFetch(tarball) } });
+      assert.equal(r.starter, "cloudflare-pages");
+      assert.equal(r.starterSource, "detected");
+      assert.equal(r.dryRun, true);
+      // The warning is a product surface: it names the guess, the confidence,
+      // the reason, and how to override.
+      const warning = r.warnings.find((w) => /cloudflare-pages/.test(w));
+      assert.ok(warning, "expected a low-confidence detection warning");
+      assert.match(warning!, /low confidence/);
+      assert.match(warning!, /front-end web app/);
+      assert.match(warning!, /--starter/);
+      const text = formatAddComponentReport(r);
+      assert.match(text, /mode: DRY-RUN/);
+      assert.match(text, /review the plan above, then apply with: create-starter add-component \[path\] --apply/);
+      assert.match(text, /warning: detected 'cloudflare-pages'/);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it("hard-fails with a GUIDED fork when nothing matches (not a raw id dump)", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "ac-empty-"));
+    writeFileSync(join(repo, "README.md"), "# just docs\n");
+    try {
+      await assert.rejects(
+        () => addComponent(repo),
+        (err: Error) => {
+          assert.match(err.message, /cloudflare-pages/);
+          assert.match(err.message, /docker-deploy/);
+          assert.match(err.message, /npm-package/);
+          assert.match(err.message, /web app|static site/);
+          return true;
+        },
+      );
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+});
