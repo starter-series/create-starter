@@ -109,15 +109,23 @@ export async function addComponent(
     const signals = extractStarterSignals(repoPath);
     if (!signals.id || signals.confidence === "none") {
       throw new Error(
-        "could not detect which starter matches this repo — pass `starter` explicitly " +
-          `(known: ${templates.map((t) => t.id).join(", ")})`,
+        "couldn't tell what this repo ships as. Re-run with the starter that fits:\n" +
+          "  • web app or static site   → --starter cloudflare-pages\n" +
+          "  • containerized service/API → --starter docker-deploy\n" +
+          "  • publishable npm library   → --starter npm-package\n" +
+          `  full list: ${templates.map((t) => t.id).join(", ")}`,
       );
     }
     starterId = signals.id;
     starterSource = "detected";
     if (signals.confidence !== "high") {
+      // Surface WHY we guessed, so a low-confidence detection reads as a
+      // helpful suggestion the user can correct — not a silent wrong turn.
+      const reason = signals.signals[signals.signals.length - 1];
       warnings.push(
-        `starter detected as '${starterId}' with ${signals.confidence} confidence — pass \`starter\` explicitly if this is wrong`,
+        `detected '${starterId}' (${signals.confidence} confidence)` +
+          (reason ? ` — ${reason}` : "") +
+          `; pass \`--starter <id>\` to override if that's wrong.`,
       );
     }
   }
@@ -201,7 +209,7 @@ export function formatAddComponentReport(r: AddComponentReport): string {
   if (r.dryRun) {
     lines.push("");
     if (r.plan.some((p) => p.action === "create")) {
-      lines.push("apply with dry_run: false (CLI: --apply).");
+      lines.push("review the plan above, then apply with: create-starter add-component [path] --apply");
     } else if (skipped.length === 0) {
       lines.push("nothing to do — target already matches the starter.");
     }
