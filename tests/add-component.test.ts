@@ -312,4 +312,28 @@ describe("addComponent — cold-start rescue of a vibe-coded export", () => {
       rmSync(repo, { recursive: true, force: true });
     }
   });
+
+  it("does not auto-suggest docker-deploy for a server that is not containerized yet", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "ac-express-"));
+    writeFileSync(
+      join(repo, "package.json"),
+      JSON.stringify({
+        name: "api",
+        scripts: { start: "node server.js" },
+        dependencies: { express: "^4" },
+      }),
+    );
+    try {
+      await assert.rejects(
+        () => addComponent(repo),
+        (err: Error) => {
+          assert.match(err.message, /containerized service\/API/);
+          assert.match(err.message, /--starter docker-deploy/);
+          return true;
+        },
+      );
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
 });

@@ -71,11 +71,11 @@ describe("extractStarterSignals — vibe-coded exports resolve instead of dead-e
     assert.equal(d.confidence, "low");
   });
 
-  it("plain Express API → docker-deploy (low)", () => {
+  it("plain Express API without Dockerfile stays unmatched", () => {
     const d = detect(pkg({ dependencies: { express: "^4" } }));
-    assert.equal(d.id, "docker-deploy");
-    assert.equal(d.confidence, "low");
-    assert.match(d.reason, /node server/);
+    assert.equal(d.id, null);
+    assert.equal(d.confidence, "none");
+    assert.match(d.reason, /no matching signal/);
   });
 
   it("an explicit Dockerfile wins over the framework guess", () => {
@@ -83,6 +83,7 @@ describe("extractStarterSignals — vibe-coded exports resolve instead of dead-e
     assert.equal(d.id, "docker-deploy");
     assert.equal(d.confidence, "low");
     assert.match(d.reason, /Dockerfile/);
+    assert.doesNotMatch(d.reason, /no JS\/Py framework/);
   });
 });
 

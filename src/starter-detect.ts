@@ -156,25 +156,20 @@ export function extractStarterSignals(repoPath: string): StarterSignals {
   if (!id && existsSync(join(repoPath, "Dockerfile"))) {
     id = "docker-deploy";
     confidence = "low";
-    signals.push("Dockerfile present, no JS/Py framework detected");
+    signals.push("Dockerfile present — suggesting docker-deploy to containerize");
   }
 
-  // Vibe-coded web app / server with no deploy target declared — the common
+  // Vibe-coded front-end app with no deploy target declared — the common
   // "exported from Lovable / v0 / Bolt" shape that otherwise matches nothing.
   // Suggest a deploy starter at LOW confidence so add_component can RESCUE the
   // repo (lift framework-agnostic CI/security) instead of dead-ending; the
   // caller is told to override with an explicit starter if the guess is wrong.
   if (!id && pkg) {
     const FRONTEND = ["vite", "next", "nuxt", "astro", "@sveltejs/kit", "react-scripts", "@angular/core", "parcel", "@remix-run/dev"];
-    const SERVER = ["express", "fastify", "koa", "hono", "@nestjs/core", "@hapi/hapi", "restify", "@google-cloud/functions-framework"];
     if (FRONTEND.some((d) => depFrom(pkg, d))) {
       id = "cloudflare-pages";
       confidence = "low";
       signals.push("front-end web app (vite/next/astro/etc.), no deploy target — suggesting cloudflare-pages for static-site deploy");
-    } else if (SERVER.some((d) => depFrom(pkg, d))) {
-      id = "docker-deploy";
-      confidence = "low";
-      signals.push("node server (express/fastify/etc.), no deploy target — suggesting docker-deploy to containerize");
     }
   }
 
