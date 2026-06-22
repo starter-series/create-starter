@@ -50,6 +50,11 @@ create-starter — scaffold a project from the Starter Series.
 
 Usage
   create-starter <name> --template <id> [options]
+  create-starter audit [path]
+  create-starter audit-cd [path]
+  create-starter audit-security [path]
+  create-starter seed-security-guidance [path] [--force]
+  create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
   create-starter --list
   create-starter --help
 
@@ -58,6 +63,10 @@ Options
   -d, --description <text> One-line project description
   -o, --output-dir <path>  Output directory (default: ./<name>)
       --no-git             Skip "git init" after scaffold
+      --component <group>   add-component group: ci, security, dependabot, maintenance, all
+      --starter <id>        add-component source starter override
+      --apply               Write the add-component plan (default is dry-run)
+      --force               Overwrite differing component files or guidance
       --list               List templates and exit
   -h, --help               Show help and exit
   -v, --version            Print version and exit
