@@ -30,7 +30,7 @@ jobs:
       # generate a SLSA build provenance attestation for the .mcpb bundle.
       attestations: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-tags: true
 
