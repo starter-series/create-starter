@@ -1,6 +1,6 @@
 # Launch Proof Report
 
-The Launch Proof Report turns the three create-starter audit primitives into one client-ready launch handoff.
+The Launch Proof Report turns create-starter's release, CD, security, and instruction-review audit primitives into one client-ready launch handoff.
 
 It is meant for the moment when an app already runs, but the owner needs evidence that the repo can be released, published, and maintained without trusting README claims.
 
@@ -11,6 +11,7 @@ It is meant for the moment when an app already runs, but the owner needs evidenc
 | Release | `create-starter audit` | Version, changelog, matched starter, and publish workflow shape are coherent enough to ship. |
 | CD | `create-starter audit-cd` | Local package/app version is compared against public registries or release destinations when public read APIs exist. |
 | Security | `create-starter audit-security` | Baseline CI security hygiene is present: secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, and security-review workflow. |
+| Instructions | `create-starter audit-instructions` | Agent instruction files are checked for exact duplicate review findings and cross-file surface overlap. Keyword risk summaries are advisory only, not exhaustive safety or semantic drift detection. |
 
 The report deliberately does not certify legal, store-review, privacy, or security-compliance status. It is a technical launch-readiness handoff.
 
@@ -62,7 +63,7 @@ The deliverable should include:
 
 Do not call the product "certified" unless a real external certification process exists. The honest offer is:
 
-> I will turn your AI-built repo into a launch-proof handoff: release gate, publish gate, security gate, and the next fixes needed before you ship.
+> I will turn your AI-built repo into a launch-proof handoff: release gate, publish gate, security gate, instruction-review gate, and the next fixes needed before you ship.
 
 ## Relationship to shotkit
 

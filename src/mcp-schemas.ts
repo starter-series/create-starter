@@ -285,7 +285,7 @@ export const launchProofReportOutputShape = {
   }),
   gates: z.array(
     z.object({
-      name: z.enum(["release", "cd", "security"]),
+      name: z.enum(["release", "cd", "security", "instructions"]),
       status: z.enum(launchProofGateStatusValues),
       verdict: z.string(),
       detail: z.string(),

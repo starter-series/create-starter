@@ -53,6 +53,12 @@ describe("launch proof report", () => {
           files: ["dist"],
         }),
       );
+      const repeatedInstruction =
+        "- Keep release workflow evidence in the handoff before claiming the repo is ready to launch.";
+      writeFileSync(
+        join(dir, "AGENTS.md"),
+        [repeatedInstruction, repeatedInstruction].join("\n"),
+      );
       writeWorkflow(
         dir,
         "publish.yml",
@@ -85,11 +91,15 @@ jobs:
 
       assert.equal(result.report.overall.verdict, "blocked");
       assert.ok(result.report.gates.some((g) => g.name === "cd" && g.status === "fail"));
+      assert.ok(result.report.gates.some((g) => g.name === "instructions" && g.status === "attention"));
+      assert.ok(result.report.warnings.some((warning) => warning.startsWith("instructions:")));
       assert.ok(existsSync(join(dir, "reports", "launch.md")));
       const written = readFileSync(join(dir, "reports", "launch.md"), "utf8");
       assert.match(written, /^# Launch Proof Report/);
       assert.match(written, /Overall: BLOCKED/);
       assert.match(written, /### audit-cd/);
+      assert.match(written, /### audit-instructions/);
+      assert.match(written, /duplicate candidates: 1/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -116,6 +126,8 @@ jobs:
 
       assert.equal(result.report.outputPath, null);
       assert.equal(existsSync(join(dir, "launch-proof-report.md")), false);
+      assert.ok(result.report.gates.some((g) => g.name === "instructions" && g.status === "pass"));
+      assert.ok(result.report.warnings.includes("instructions: No agent instruction files found."));
       assert.match(formatLaunchProofReport(result.report), /technical launch-readiness report/);
     } finally {
       rmSync(dir, { recursive: true, force: true });

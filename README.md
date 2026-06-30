@@ -17,9 +17,9 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 - **`audit_cd`** — probes npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases for per-destination publish drift (in-sync / needs-publish / local-stale / not-found / unsupported).
 - **`audit_security`** — checks 9 items: 8 core CI primitives (gitleaks with pin check, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action) plus the optional repo-author `claude-security-guidance.md`. The 8 core checks gate the HARDENED verdict; this repo passes 8/8 core.
 - **`audit_instructions` / `audit-instructions`** — reviews agent instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot instructions) for exact same-file duplicates, cross-file surface overlap, and keyword-based risk reminders. Duplicate/overlap findings need review; keyword risk summaries are advisory only and not exhaustive safety or semantic drift detection.
-- **`proof-report` / `generate_launch_proof_report`** — runs release, CD, and security audits together and writes a client-ready [`Launch Proof Report`](docs/launch-proof-report.md). This is the monetizable handoff surface: evidence first, no "certified" claim, exit code 1 unless the repo is actually launch-ready.
+- **`proof-report` / `generate_launch_proof_report`** — runs release, CD, security, and instruction-review audits together and writes a client-ready [`Launch Proof Report`](docs/launch-proof-report.md). This is the monetizable handoff surface: evidence first, no "certified" claim, exit code 1 unless the repo is actually launch-ready.
 - **`add_component`** — the remediation half of the audit loop: lifts a starter's CI/CD layer (ci / security / dependabot / maintenance / all) into an *existing* repo without re-scaffolding. Dry-run by default with a per-file plan (create / identical / skip-exists / overwrite); refuses a dirty git tree unless forced; never touches app code or secrets-bearing CD workflows. The dry-run plan doubles as a drift report against the starter.
-- **Graduation guide** — `docs/graduation-from-vibe-coding.md` (+ Korean): five-step path from Lovable/Bolt/v0 exports to GitHub Actions + a real deploy target, using the three audit primitives.
+- **Graduation guide** — `docs/graduation-from-vibe-coding.md` (+ Korean): five-step path from Lovable/Bolt/v0 exports to GitHub Actions + a real deploy target, using the release/CD/security audit primitives.
 
 ## Planned
 
@@ -29,7 +29,7 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 
 - **One binary, two surfaces.** CLI and MCP stdio share one scaffolding engine. Argv decides which surface answers. No duplicated logic for "the same thing called from a human vs an agent".
 - **Atomic on failure.** Extraction happens in a sibling `.<name>-incomplete-<rand>` directory and only renames into the final path on success. Network failure, corrupt archive, partial write — none of them leaves a half-scaffolded directory behind.
-- **Audit is first-class.** Templates ship a security baseline (gitleaks pinned to SHA, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review). The three audit commands check whether a downstream repo still matches that bar — turning the baseline from a one-time scaffold into an ongoing gate.
+- **Audit is first-class.** Templates ship a security baseline (gitleaks pinned to SHA, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review). The audit commands check whether a downstream repo still matches that bar — turning the baseline from a one-time scaffold into an ongoing gate.
 - **Eat your own dogfood.** This repo passes `audit_security` 8/8 core checks (HARDENED); the 9th is the optional `claude-security-guidance.md`. If the tool that audits other repos can't pass its own bar, the bar isn't real.
 - **Read-only outside its sandbox.** Downloads are capped (50 MB, 30 s timeout, 3 retries). Relative output paths cannot escape cwd; absolute paths are accepted only as explicit user intent. `git init` failure is logged but non-fatal.
 
@@ -200,7 +200,7 @@ Audit (each takes an optional `path` arg, default = MCP server cwd; all read-onl
 - **`audit_cd`** — per-destination publish-drift probe. CLI mirror: `create-starter audit-cd [path]`.
 - **`audit_security`** — baseline CI security hygiene check. CLI mirror: `create-starter audit-security [path]`.
 - **`audit_instructions`** — agent-instruction duplicate and surface-overlap review, with advisory keyword risk summaries. CLI mirror: `create-starter audit-instructions [path]`.
-- **`generate_launch_proof_report`** — combined Markdown launch handoff from release, CD, and security audits. CLI mirror: `create-starter proof-report [path] [--output <file>] [--stdout]`.
+- **`generate_launch_proof_report`** — combined Markdown launch handoff from release, CD, security, and instruction-review audits. CLI mirror: `create-starter proof-report [path] [--output <file>] [--stdout]`.
 - **`seed_security_guidance`** — generate a starter-aware `claude-security-guidance.md` draft. CLI mirror: `create-starter seed-security-guidance [path] [--force]`.
 - **`add_component`** — propose or apply starter CI/CD components to an existing repo as a dry-run plan. CLI mirror: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
 

@@ -1,6 +1,6 @@
 # Launch Proof Report
 
-Launch Proof Report는 create-starter의 세 가지 감사 프리미티브를 하나의 출시 인계 리포트로 묶습니다.
+Launch Proof Report는 create-starter의 release, CD, security, instruction-review 감사 프리미티브를 하나의 출시 인계 리포트로 묶습니다.
 
 앱이 이미 동작하지만, README 주장만 믿지 않고 릴리스, 퍼블리시, 유지보수 가능성을 증거로 확인해야 하는 시점에 쓰는 문서입니다.
 
@@ -11,6 +11,7 @@ Launch Proof Report는 create-starter의 세 가지 감사 프리미티브를 �
 | Release | `create-starter audit` | 버전, changelog, 매칭 starter, publish workflow 구조가 출시 가능한 형태인지 확인합니다. |
 | CD | `create-starter audit-cd` | 공개 read API가 있는 registry 또는 release destination에서 로컬 버전과 공개 버전의 드리프트를 확인합니다. |
 | Security | `create-starter audit-security` | secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, security-review workflow 등 기본 CI 보안 위생을 확인합니다. |
+| Instructions | `create-starter audit-instructions` | agent instruction 파일의 exact duplicate review finding과 cross-file surface overlap을 확인합니다. Keyword risk summary는 advisory일 뿐, exhaustive safety나 semantic drift detection이 아닙니다. |
 
 이 리포트는 법률, 스토어 심사, 개인정보 처리, 보안 인증 상태를 보증하지 않습니다. 기술적인 출시 준비도 인계 문서입니다.
 
@@ -62,7 +63,7 @@ npx -y @starter-series/create proof-report /path/to/repo --output reports/launch
 
 실제 외부 인증 절차가 없다면 "certified"라고 부르지 마십시오. 정직한 제안은 다음입니다.
 
-> AI로 만든 레포를 출시 인계 가능한 상태로 정리해드립니다. release gate, publish gate, security gate, 그리고 출시 전 필요한 다음 수정 사항까지 남깁니다.
+> AI로 만든 레포를 출시 인계 가능한 상태로 정리해드립니다. release gate, publish gate, security gate, instruction-review gate, 그리고 출시 전 필요한 다음 수정 사항까지 남깁니다.
 
 ## shotkit과의 관계
 

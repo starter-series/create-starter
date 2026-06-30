@@ -278,7 +278,7 @@ async function runMcpServer(): Promise<void> {
     "generate_launch_proof_report",
     {
       description:
-        "Run audit_release, audit_cd, and audit_security together, then return a client-ready Markdown Launch Proof Report. Read-only by default; set write=true to write launch-proof-report.md or output_path inside the target repo.",
+        "Run audit_release, audit_cd, audit_security, and audit_instructions together, then return a client-ready Markdown Launch Proof Report. Read-only by default; set write=true to write launch-proof-report.md or output_path inside the target repo.",
       inputSchema: {
         path: z
           .string()

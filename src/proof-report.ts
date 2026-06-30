@@ -7,12 +7,17 @@ import {
   formatAuditSecurityReport,
   type AuditSecurityReport,
 } from "./audit-security.js";
+import {
+  auditInstructions,
+  formatAuditInstructionsReport,
+  type AuditInstructionsReport,
+} from "./audit-instructions.js";
 
 export type LaunchProofGateStatus = "pass" | "attention" | "fail";
 export type LaunchProofVerdict = "ready" | "attention" | "blocked";
 
 export interface LaunchProofGate {
-  name: "release" | "cd" | "security";
+  name: "release" | "cd" | "security" | "instructions";
   status: LaunchProofGateStatus;
   verdict: string;
   detail: string;
@@ -32,6 +37,7 @@ export interface LaunchProofReport {
   release: AuditReport;
   cd: AuditCdReport;
   security: AuditSecurityReport;
+  instructions: AuditInstructionsReport;
 }
 
 export interface GenerateLaunchProofReportOptions {
@@ -73,6 +79,10 @@ function statusFromSecurity(report: AuditSecurityReport): LaunchProofGateStatus 
   return "fail";
 }
 
+function statusFromInstructions(report: AuditInstructionsReport): LaunchProofGateStatus {
+  return report.overall.verdict === "attention" ? "attention" : "pass";
+}
+
 function classifyOverall(gates: LaunchProofGate[]): LaunchProofVerdict {
   if (gates.some((g) => g.status === "fail")) return "blocked";
   if (gates.some((g) => g.status === "attention")) return "attention";
@@ -81,7 +91,7 @@ function classifyOverall(gates: LaunchProofGate[]): LaunchProofVerdict {
 
 function summaryForVerdict(verdict: LaunchProofVerdict): string {
   if (verdict === "ready") {
-    return "The repo passed the release, publishing, and security proof gates checked by create-starter.";
+    return "The repo passed the release, publishing, security, and instruction-review proof gates checked by create-starter.";
   }
   if (verdict === "attention") {
     return "The repo has no hard proof-gate failure, but at least one gate needs human review before launch.";
@@ -89,7 +99,12 @@ function summaryForVerdict(verdict: LaunchProofVerdict): string {
   return "The repo is not ready to launch until the failed proof gates are resolved.";
 }
 
-function mergeFindings(release: AuditReport, cd: AuditCdReport, security: AuditSecurityReport): {
+function mergeFindings(
+  release: AuditReport,
+  cd: AuditCdReport,
+  security: AuditSecurityReport,
+  instructions: AuditInstructionsReport,
+): {
   blockers: string[];
   warnings: string[];
 } {
@@ -107,6 +122,14 @@ function mergeFindings(release: AuditReport, cd: AuditCdReport, security: AuditS
   ];
   if (security.overall.verdict === "needs-attention") {
     warnings.push(...security.overall.issues.map((i) => `security: ${i}`));
+  }
+  warnings.push(...instructions.overall.warnings.map((w) => `instructions: ${w}`));
+  if (instructions.overall.verdict === "attention") {
+    warnings.push(
+      `instructions: ${instructions.duplicates.length} duplicate candidate(s) and ${instructions.surfaceOverlaps.length} surface overlap(s) need review`,
+    );
+  } else if (instructions.overall.verdict === "advisory") {
+    warnings.push(`instructions: ${instructions.riskSummaries.length} advisory keyword risk summary item(s)`);
   }
 
   return { blockers, warnings };
@@ -174,6 +197,12 @@ export function formatLaunchProofReport(report: LaunchProofReport): string {
   out.push(formatAuditSecurityReport(report.security).trimEnd());
   out.push("```");
   out.push("");
+  out.push("### audit-instructions");
+  out.push("");
+  out.push("```text");
+  out.push(formatAuditInstructionsReport(report.instructions).trimEnd());
+  out.push("```");
+  out.push("");
   return out.join("\n");
 }
 
@@ -198,10 +227,11 @@ export async function generateLaunchProofReport(
 ): Promise<GeneratedLaunchProofReport> {
   const repoPath = resolve(options.repoPath ?? process.cwd());
   const outputPath = resolveOutputPath(repoPath, options.outputPath);
-  const [release, cd, security] = await Promise.all([
+  const [release, cd, security, instructions] = await Promise.all([
     auditRelease(repoPath),
     auditCd(repoPath, { fetch: options.fetch }),
     auditSecurity(repoPath),
+    auditInstructions(repoPath),
   ]);
 
   const gates: LaunchProofGate[] = [
@@ -223,9 +253,15 @@ export async function generateLaunchProofReport(
       verdict: security.overall.verdict,
       detail: `${security.summary.present} present, ${security.summary.partial} partial, ${security.summary.missing} missing`,
     },
+    {
+      name: "instructions",
+      status: statusFromInstructions(instructions),
+      verdict: instructions.overall.verdict,
+      detail: `${instructions.duplicates.length} duplicate(s), ${instructions.surfaceOverlaps.length} overlap(s), ${instructions.riskSummaries.length} advisory risk summary item(s)`,
+    },
   ];
   const verdict = classifyOverall(gates);
-  const findings = mergeFindings(release, cd, security);
+  const findings = mergeFindings(release, cd, security, instructions);
   const report: LaunchProofReport = {
     repoPath,
     generatedAt: (options.now ?? new Date()).toISOString(),
@@ -240,6 +276,7 @@ export async function generateLaunchProofReport(
     release,
     cd,
     security,
+    instructions,
   };
   const markdown = formatLaunchProofReport(report);
   if (outputPath) {
