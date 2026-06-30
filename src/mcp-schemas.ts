@@ -19,6 +19,7 @@ import { z } from "zod";
 import type { ShipVerdict, WorkflowKind, ConfidenceLevel } from "./audit.js";
 import type { CdStatus, CdVerdict, DestinationName } from "./audit-cd.js";
 import type { CheckStatus, SecurityCheckName } from "./audit-security.js";
+import type { LaunchProofGateStatus, LaunchProofVerdict } from "./proof-report.js";
 
 // ---- shared enums (sourced from audit*.ts union types) ----
 
@@ -71,6 +72,18 @@ const checkStatusValues = [
   "partial",
   "not-applicable",
 ] as const satisfies readonly CheckStatus[];
+
+const launchProofGateStatusValues = [
+  "pass",
+  "attention",
+  "fail",
+] as const satisfies readonly LaunchProofGateStatus[];
+
+const launchProofVerdictValues = [
+  "ready",
+  "attention",
+  "blocked",
+] as const satisfies readonly LaunchProofVerdict[];
 
 const securityCheckNameValues = [
   "gitleaks",
@@ -194,6 +207,29 @@ export const auditSecurityOutputShape = {
     verdict: z.enum(["hardened", "needs-attention", "soft"]),
     issues: z.array(z.string()),
   }),
+};
+
+// ---- launch proof report ----
+
+export const launchProofReportOutputShape = {
+  repoPath: z.string(),
+  generatedAt: z.string(),
+  outputPath: z.string().nullable(),
+  overall: z.object({
+    verdict: z.enum(launchProofVerdictValues),
+    summary: z.string(),
+  }),
+  gates: z.array(
+    z.object({
+      name: z.enum(["release", "cd", "security"]),
+      status: z.enum(launchProofGateStatusValues),
+      verdict: z.string(),
+      detail: z.string(),
+    }),
+  ),
+  blockers: z.array(z.string()),
+  warnings: z.array(z.string()),
+  markdown: z.string(),
 };
 
 // ---- seed_security_guidance ----

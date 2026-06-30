@@ -1,7 +1,7 @@
 {
   "name": "@starter-series/create",
   "version": "0.4.0",
-  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
+  "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
@@ -47,6 +47,8 @@
     "skills",
     "docs/graduation-from-vibe-coding.md",
     "docs/graduation-from-vibe-coding.ko.md",
+    "docs/launch-proof-report.md",
+    "docs/launch-proof-report.ko.md",
     ".claude-plugin",
     ".mcp.json",
     "README.md",

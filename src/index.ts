@@ -22,11 +22,13 @@ import {
   auditReleaseOutputShape,
   auditCdOutputShape,
   auditSecurityOutputShape,
+  launchProofReportOutputShape,
   seedSecurityGuidanceOutputShape,
   addComponentOutputShape,
   componentGroupValues,
 } from "./mcp-schemas.js";
 import { addComponent, formatAddComponentReport } from "./add-component.js";
+import { generateLaunchProofReport } from "./proof-report.js";
 import { readVersion } from "./version.js";
 
 async function runMcpServer(): Promise<void> {
@@ -233,6 +235,65 @@ async function runMcpServer(): Promise<void> {
         return {
           content: [
             { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "generate_launch_proof_report",
+    {
+      description:
+        "Run audit_release, audit_cd, and audit_security together, then return a client-ready Markdown Launch Proof Report. Read-only by default; set write=true to write launch-proof-report.md or output_path inside the target repo.",
+      inputSchema: {
+        path: z
+          .string()
+          .optional()
+          .describe(
+            "Path to the repo to audit (default: the MCP server's cwd). Use the absolute path of the project the user is working in.",
+          ),
+        output_path: z
+          .string()
+          .optional()
+          .describe(
+            "Report file path. Relative paths are resolved inside the target repo. Ignored unless write=true.",
+          ),
+        write: z
+          .boolean()
+          .optional()
+          .describe("Write the Markdown report to disk. Default false."),
+      },
+      outputSchema: launchProofReportOutputShape,
+    },
+    async ({ path: repoPath, output_path, write }) => {
+      try {
+        const result = await generateLaunchProofReport({
+          repoPath: repoPath ?? process.cwd(),
+          outputPath: write ? output_path : null,
+        });
+        const { report, markdown } = result;
+        return {
+          content: [{ type: "text" as const, text: markdown }],
+          structuredContent: {
+            repoPath: report.repoPath,
+            generatedAt: report.generatedAt,
+            outputPath: report.outputPath,
+            overall: report.overall,
+            gates: report.gates,
+            blockers: report.blockers,
+            warnings: report.warnings,
+            markdown,
+          },
+        };
+      } catch (e) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `generate_launch_proof_report failed: ${(e as Error).message}`,
+            },
           ],
           isError: true,
         };

@@ -10,6 +10,10 @@ import {
   formatSeedSecurityGuidanceReport,
 } from "./seed-security-guidance.js";
 import { addComponent, formatAddComponentReport, type ComponentGroup } from "./add-component.js";
+import {
+  formatLaunchProofSummary,
+  generateLaunchProofReport,
+} from "./proof-report.js";
 import { readVersion } from "./version.js";
 
 const HELP = `create-starter — scaffold and audit Starter Series projects.
@@ -19,6 +23,9 @@ Usage
   create-starter audit [path]
   create-starter audit-cd [path]
   create-starter audit-security [path]
+  create-starter proof-report [path] [--output <file>] [--stdout]
+  create-starter seed-security-guidance [path] [--force]
+  create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
   create-starter --list
   create-starter --help
 
@@ -29,6 +36,9 @@ Arguments
                            VS Marketplace, GitHub Releases) for publish drift
   audit-security [path]    Audit CI security hygiene (gitleaks, CodeQL, audit,
                            --ignore-scripts, Dependabot, etc.)
+  proof-report [path]      Run audit, audit-cd, and audit-security, then write
+                           launch-proof-report.md as a client-ready Markdown
+                           launch-readiness handoff. Exits 1 unless READY.
   seed-security-guidance [path] [--force]
                            Generate a starter claude-security-guidance.md
                            tailored to the detected Starter Series template
@@ -45,6 +55,10 @@ Options
   -d, --description <text> One-line project description
   -o, --output-dir <path>  Output directory (default: ./<name>)
       --no-git             Skip "git init" after scaffold
+      --output <file>       proof-report output (default:
+                           <path>/launch-proof-report.md)
+      --stdout              print proof-report Markdown instead of only a
+                           summary; with --output, also writes the file
       --list               List available templates and exit
   -h, --help               Show this message and exit
   -v, --version            Print version and exit
@@ -297,6 +311,58 @@ async function runAddComponentSubcommand(argv: string[]): Promise<number> {
   }
 }
 
+async function runProofReportSubcommand(argv: string[]): Promise<number> {
+  if (argv.includes("-h") || argv.includes("--help")) {
+    process.stdout.write(HELP);
+    return EXIT_OK;
+  }
+  let output: string | null | undefined;
+  let stdout = false;
+  const positionals: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const valueOf = (): string | undefined =>
+      a.includes("=") ? a.slice(a.indexOf("=") + 1) : argv[++i];
+    if (a === "--output" || a.startsWith("--output=") || a === "-o") {
+      output = valueOf();
+    } else if (a === "--stdout") {
+      stdout = true;
+    } else if (a.startsWith("-")) {
+      process.stderr.write(`error: unknown option '${a}' (run 'proof-report --help')\n`);
+      return EXIT_OP_FAILURE;
+    } else {
+      positionals.push(a);
+    }
+  }
+  if (output === undefined && argv.some((a) => a === "--output" || a === "-o")) {
+    process.stderr.write("error: missing value for --output\n");
+    return EXIT_OP_FAILURE;
+  }
+  if (positionals.length > 1) {
+    process.stderr.write(
+      `error: 'proof-report' accepts at most one path, got: ${positionals.join(" ")}\n`,
+    );
+    return EXIT_OP_FAILURE;
+  }
+  const path = positionals[0] ?? process.cwd();
+  if (stdout && output === undefined) output = null;
+  try {
+    const result = await generateLaunchProofReport({
+      repoPath: path,
+      outputPath: output,
+    });
+    process.stdout.write(
+      stdout
+        ? `${result.markdown}\n`
+        : formatLaunchProofSummary(result.report),
+    );
+    return result.report.overall.verdict === "ready" ? EXIT_OK : EXIT_RESULT_FAILURE;
+  } catch (err) {
+    process.stderr.write(`error: ${(err as Error).message}\n`);
+    return EXIT_OP_FAILURE;
+  }
+}
+
 export async function runCli(argv: string[]): Promise<number> {
   if (argv[0] === "audit") {
     return runAuditSubcommand(
@@ -330,6 +396,9 @@ export async function runCli(argv: string[]): Promise<number> {
   }
   if (argv[0] === "add-component") {
     return runAddComponentSubcommand(argv.slice(1));
+  }
+  if (argv[0] === "proof-report") {
+    return runProofReportSubcommand(argv.slice(1));
   }
 
   let parsed: Parsed;

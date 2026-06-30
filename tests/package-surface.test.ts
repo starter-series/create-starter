@@ -58,8 +58,16 @@ describe("npm package surface", () => {
       "package tarball must include Claude Code plugin metadata",
     );
     assert.ok(
+      files.has(".claude-plugin/commands/proof-report.md"),
+      "package tarball must include the proof-report slash command",
+    );
+    assert.ok(
       files.has("skills/create/SKILL.md"),
       "package tarball must include the create skill",
+    );
+    assert.ok(
+      files.has("docs/launch-proof-report.md"),
+      "package tarball must include the Launch Proof Report docs",
     );
     assert.ok(
       files.has("server.json"),

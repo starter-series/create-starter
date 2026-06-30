@@ -12,7 +12,7 @@ import { resolve } from "node:path";
 //
 // If audit*.ts adds or renames a field that mcp-schemas.ts doesn't mirror,
 // the SDK emits an "Output validation error" text block on tools/call.
-// This test asserts that no such error appears for any of the 5 tools.
+// This test asserts that no such error appears for the runtime-validated tools.
 
 const BIN = resolve(import.meta.dirname, "..", "dist", "index.js");
 const PROTOCOL_VERSION = "2025-03-26";
@@ -150,6 +150,7 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
         "audit_release",
         "audit_security",
         "create_project",
+        "generate_launch_proof_report",
         "list_templates",
         "seed_security_guidance",
       ],
@@ -274,10 +275,40 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
     }
   });
 
+  it("generate_launch_proof_report returns markdown plus structured summary", async () => {
+    const res = await client.send({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "generate_launch_proof_report",
+        arguments: { path: process.cwd(), write: false },
+      },
+    });
+    assertNoValidationError(res, "generate_launch_proof_report");
+    const sc = res.result?.structuredContent as
+      | {
+          markdown?: string;
+          overall?: { verdict?: string };
+          gates?: { name: string; status: string }[];
+        }
+      | undefined;
+    assert.ok(sc, "generate_launch_proof_report: missing structuredContent");
+    assert.ok(sc.markdown?.startsWith("# Launch Proof Report"));
+    assert.ok(
+      ["ready", "attention", "blocked"].includes(sc.overall!.verdict!),
+      `generate_launch_proof_report: unexpected verdict = ${sc.overall!.verdict}`,
+    );
+    assert.deepEqual(
+      sc.gates!.map((g) => g.name).sort(),
+      ["cd", "release", "security"],
+    );
+  });
+
   it("invalid input is rejected with isError, not crash", async () => {
     const res = await client.send({
       jsonrpc: "2.0",
-      id: 7,
+      id: 9,
       method: "tools/call",
       params: {
         name: "create_project",
