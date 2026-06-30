@@ -147,7 +147,7 @@ Run through before clicking Submit on `https://claude.ai/settings/plugins/submit
 - [ ] `server.json` version matches the npm version.
 - [ ] MCP Registry entry for `io.github.starter-series/create-starter` is **live and healthy**.
 - [ ] Latest GitHub release has `create-starter-<version>.mcpb` attached and verified to install cleanly into Claude Desktop (drag-and-drop, then call `list_templates`).
-- [ ] `README.md` and `README.ko.md` reflect the submitted version.
+- [ ] `README.md` and `docs/ko/README.md` reflect the submitted version.
 - [ ] CI green on `main` (`ci.yml`, `publish.yml`, `publish-mcp-registry.yml`).
 - [ ] Icon asset ready — see `assets/icon.png` spec in section 9.
 - [ ] 3–5 carousel screenshots (≥1000 px wide, PNG) of the scaffolding flow, **without the user prompt visible**, saved under `assets/screenshots/`.

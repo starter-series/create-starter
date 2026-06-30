@@ -147,7 +147,7 @@ OS 커버리지: macOS (arm64, x64), Linux (x64), Windows (x64). `.github/workfl
 - [ ] `server.json` 버전이 npm 버전과 일치한다.
 - [ ] `io.github.starter-series/create-starter` MCP Registry 엔트리가 **정상 활성**이다.
 - [ ] 최신 GitHub 릴리스에 `create-starter-<version>.mcpb`가 첨부되어 있고 Claude Desktop에 드래그 설치 후 `list_templates` 호출이 정상 동작한다.
-- [ ] `README.md`와 `README.ko.md`가 제출 버전 내용을 반영한다.
+- [ ] `README.md`와 `docs/ko/README.md`가 제출 버전 내용을 반영한다.
 - [ ] `main`의 CI 그린 (`ci.yml`, `publish.yml`, `publish-mcp-registry.yml`).
 - [ ] 아이콘 준비 — §9의 `assets/icon.png` 스펙 참고.
 - [ ] 3–5장 캐러셀 스크린샷 (≥1000 px 폭, PNG), **사용자 프롬프트는 frame에서 제외**, `assets/screenshots/` 아래 저장.

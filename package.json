@@ -52,7 +52,7 @@
     ".claude-plugin",
     ".mcp.json",
     "README.md",
-    "README.ko.md",
+    "docs/ko/README.md",
     "CHANGELOG.md",
     "LICENSE",
     "server.json"

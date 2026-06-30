@@ -49,7 +49,7 @@ const staging = join(stagingRoot, "pkg");
 log(`Staging at ${staging}`);
 
 const required = ["dist", "manifest.json", "package.json", "package-lock.json", "README.md", "LICENSE"];
-const optional = ["skill", "skills", "README.ko.md", ".claude-plugin", ".mcp.json"];
+const optional = ["skill", "skills", "docs/ko/README.md", ".claude-plugin", ".mcp.json"];
 
 try {
   for (const e of required) {
