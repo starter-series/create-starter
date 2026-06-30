@@ -36,7 +36,7 @@ Requires **Node.js ≥22** (see `package.json#engines`).
 - **Tests:** `node --test` with `tsx`. Each new branch in `src/` should have a test in `tests/`.
 - **Lint/typecheck:** `npm run lint` (= `tsc --noEmit`). `npm run build` (= `tsc`) is what CI verifies.
 - **Security:** `--ignore-scripts` on every `npm` invocation in CI. Workflow permissions are job-level least privilege. New workflows that need write scopes must justify them in the PR description.
-- **Localization:** `README.md` is the English canonical root README. Localized README content ships under `docs/ko/README.md` until a public multilingual landing page becomes the primary localized surface. Korean uses formal honorifics (존댓말). `docs/graduation-from-vibe-coding.md` and `.ko.md` likewise.
+- **Localization:** `README.md` is the English canonical root README. Localized README content ships under `docs/ko/README.md`; this package is distributed as CLI/MCP/plugin/Desktop extension tooling, not as a web product surface. Korean uses formal honorifics (존댓말). `docs/graduation-from-vibe-coding.md` and `.ko.md` likewise.
 
 ## Reporting security issues
 
