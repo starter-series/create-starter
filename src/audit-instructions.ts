@@ -460,8 +460,16 @@ function formatLocations(occurrences: InstructionOccurrence[]): string {
   return occurrences.map((occurrence) => `${occurrence.path}:${occurrence.line}`).join(", ");
 }
 
-function firstExample(examples: InstructionExample[]): string {
-  return examples[0]?.text ?? "";
+function formatExamples(examples: InstructionExample[], limit: number): string[] {
+  const out: string[] = [];
+  for (const example of examples.slice(0, limit)) {
+    out.push(`  - ${formatLocations(example.occurrences)}`);
+    out.push(`    ${example.text}`);
+  }
+  if (examples.length > limit) {
+    out.push(`  - ... ${examples.length - limit} more duplicate text(s) omitted`);
+  }
+  return out;
 }
 
 export function formatAuditInstructionsReport(report: AuditInstructionsReport): string {
@@ -491,8 +499,10 @@ export function formatAuditInstructionsReport(report: AuditInstructionsReport): 
   if (report.surfaceOverlaps.length > 0) {
     out.push("Surface overlaps:");
     for (const overlap of report.surfaceOverlaps) {
-      out.push(`- ${overlap.id} ${overlap.recommendation} paths=${overlap.paths.join(", ")}`);
-      out.push(`  ${firstExample(overlap.examples)}`);
+      out.push(
+        `- ${overlap.id} ${overlap.recommendation} duplicate_texts=${overlap.duplicateTexts} occurrences=${overlap.occurrences} paths=${overlap.paths.join(", ")}`,
+      );
+      out.push(...formatExamples(overlap.examples, 3));
     }
     out.push("");
   }
@@ -501,7 +511,7 @@ export function formatAuditInstructionsReport(report: AuditInstructionsReport): 
     out.push("- Keyword-based reminders only; not exhaustive safety or semantic drift detection.");
     for (const summary of report.riskSummaries) {
       out.push(`- ${summary.id} ${summary.risk} findings=${summary.findings} paths=${summary.paths.join(", ")}`);
-      out.push(`  ${firstExample(summary.examples)}`);
+      out.push(...formatExamples(summary.examples, 2));
     }
     out.push("");
   }
