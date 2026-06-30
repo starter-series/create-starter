@@ -17,9 +17,9 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 - **`audit_cd`** — npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases의 destination별 publish 드리프트 (in-sync / needs-publish / local-stale / not-found / unsupported) 탐지.
 - **`audit_security`** — 9개 항목 점검: 8개 core CI 프리미티브(gitleaks pin 체크, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action)와 선택 항목인 repo-author `claude-security-guidance.md`. HARDENED verdict는 8개 core 체크가 게이트하며, 이 레포 자체는 8/8 core를 통과합니다.
 - **`audit_instructions` / `audit-instructions`** — agent instruction 파일(`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot instructions)의 exact same-file duplicate, cross-file surface overlap, keyword-based risk reminder를 검토합니다. duplicate/overlap finding은 리뷰 대상이고, keyword risk summary는 advisory일 뿐 exhaustive safety나 semantic drift detection이 아닙니다.
-- **`proof-report` / `generate_launch_proof_report`** — release, CD, security 감사를 함께 실행하고 고객에게 전달 가능한 [`Launch Proof Report`](docs/launch-proof-report.ko.md)를 씁니다. 수익화 가능한 인계 표면은 여기입니다: 증거 우선, "certified" 같은 과장 없음, 실제 launch-ready가 아니면 exit code 1.
+- **`proof-report` / `generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 함께 실행하고 고객에게 전달 가능한 [`Launch Proof Report`](docs/launch-proof-report.ko.md)를 씁니다. 수익화 가능한 인계 표면은 여기입니다: 증거 우선, "certified" 같은 과장 없음, 실제 launch-ready가 아니면 exit code 1.
 - **`add_component`** — 감사 루프의 remediation 절반: starter의 CI/CD 레이어(ci / security / dependabot / maintenance / all)를 기존 레포로 이식합니다. 기본은 dry-run이며, 파일별 plan(create / identical / skip-exists / overwrite)을 보여줍니다. dirty git tree는 강제 옵션 없이는 거부하고, 앱 코드나 secret-bearing CD workflow는 건드리지 않습니다.
-- **졸업 가이드** — `docs/graduation-from-vibe-coding.md` (+ 한국어): Lovable/Bolt/v0 export에서 GitHub Actions + 자체 deploy target으로 옮기는 5단계 경로. 세 가지 감사 프리미티브를 사용합니다.
+- **졸업 가이드** — `docs/graduation-from-vibe-coding.md` (+ 한국어): Lovable/Bolt/v0 export에서 GitHub Actions + 자체 deploy target으로 옮기는 5단계 경로. release/CD/security 감사 프리미티브를 사용합니다.
 
 ## Planned (계획된 것)
 
@@ -29,7 +29,7 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 - **하나의 바이너리, 두 개의 표면.** CLI와 MCP stdio가 하나의 스캐폴딩 엔진을 공유합니다. argv가 어느 표면이 응답할지 결정합니다. "사람이 호출하는 것과 에이전트가 호출하는 것"을 위한 중복 로직이 없습니다.
 - **실패 시 원자적.** 추출은 sibling `.<name>-incomplete-<rand>` 디렉터리에서 진행되고, 성공한 경우에만 최종 경로로 rename됩니다. 네트워크 실패, 손상된 아카이브, 부분 쓰기 — 어느 것도 절반 스캐폴딩된 디렉터리를 남기지 않습니다.
-- **감사는 곁가지가 아니라 일등 시민.** 템플릿은 보안 베이스라인 (gitleaks SHA pin, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review)을 함께 제공합니다. 세 가지 감사 명령은 다운스트림 레포가 그 베이스라인을 여전히 충족하는지 확인합니다 — 베이스라인을 일회성 스캐폴딩에서 지속적 게이트로 전환합니다.
+- **감사는 곁가지가 아니라 일등 시민.** 템플릿은 보안 베이스라인 (gitleaks SHA pin, CodeQL, Dependabot grouped, `--ignore-scripts`, claude-code-security-review)을 함께 제공합니다. 감사 명령은 다운스트림 레포가 그 베이스라인을 여전히 충족하는지 확인합니다 — 베이스라인을 일회성 스캐폴딩에서 지속적 게이트로 전환합니다.
 - **자체 도그푸딩.** 이 레포는 `audit_security` 8/8 core HARDENED를 통과합니다. 9번째 항목은 선택 항목인 `claude-security-guidance.md`입니다. 다른 레포를 감사하는 도구가 자신의 체크를 통과하지 못한다면 그 기준선은 실재하는 것이 아닙니다.
 - **샌드박스 바깥에서는 읽기 전용.** 다운로드는 캡 적용 (50 MB, 30 s timeout, 3회 재시도). 상대 경로 출력은 cwd 바깥으로 벗어날 수 없고, 절대 경로는 명시적 사용자 의도로만 허용됩니다. `git init` 실패는 기록되지만 치명적이지 않습니다.
 
@@ -198,7 +198,7 @@ Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동
 - **`audit_cd`** — destination별 publish 드리프트 탐지. CLI 미러: `create-starter audit-cd [path]`.
 - **`audit_security`** — CI 보안 위생 베이스라인 점검. CLI 미러: `create-starter audit-security [path]`.
 - **`audit_instructions`** — agent instruction duplicate와 surface-overlap review, advisory keyword risk summary. CLI 미러: `create-starter audit-instructions [path]`.
-- **`generate_launch_proof_report`** — release, CD, security 감사를 합친 Markdown 출시 인계 리포트. CLI 미러: `create-starter proof-report [path] [--output <file>] [--stdout]`.
+- **`generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 합친 Markdown 출시 인계 리포트. CLI 미러: `create-starter proof-report [path] [--output <file>] [--stdout]`.
 - **`seed_security_guidance`** — 감지된 Starter Series 템플릿에 맞는 `claude-security-guidance.md` 초안 생성. CLI 미러: `create-starter seed-security-guidance [path] [--force]`.
 - **`add_component`** — 기존 레포에 starter의 CI/CD component를 dry-run plan으로 제안하거나 적용. CLI 미러: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
 

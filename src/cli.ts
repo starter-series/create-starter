@@ -46,9 +46,10 @@ Arguments
                            duplicates, cross-file surface overlap, and
                            advisory keyword risk summaries. Read-only; not
                            semantic drift or safety enforcement.
-  proof-report [path]      Run audit, audit-cd, and audit-security, then write
-                           launch-proof-report.md as a client-ready Markdown
-                           launch-readiness handoff. Exits 1 unless READY.
+  proof-report [path]      Run audit, audit-cd, audit-security, and
+                           audit-instructions, then write launch-proof-report.md
+                           as a client-ready Markdown launch-readiness handoff.
+                           Exits 1 unless READY.
   seed-security-guidance [path] [--force]
                            Generate a starter claude-security-guidance.md
                            tailored to the detected Starter Series template

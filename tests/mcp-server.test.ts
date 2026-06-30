@@ -322,7 +322,7 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
     );
     assert.deepEqual(
       sc.gates!.map((g) => g.name).sort(),
-      ["cd", "release", "security"],
+      ["cd", "instructions", "release", "security"],
     );
   });
 
