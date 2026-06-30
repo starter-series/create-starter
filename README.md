@@ -4,7 +4,7 @@
 
 Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What keeps a shipped repo trustworthy is the audit primitives (`audit`, `audit-cd`, `audit-security`) verifying release, CD, and CI security hygiene against a known bar — gating each merge instead of asking a human to re-check by hand.
 
-[🇰🇷 한국어](README.ko.md)
+Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md) until the public landing page becomes the multilingual surface.
 
 ## Currently implemented
 

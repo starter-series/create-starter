@@ -4,7 +4,7 @@
 
 Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 불과합니다. 출시된 레포가 신뢰할 만한 상태를 유지하게 만드는 것은 감사 프리미티브(`audit`, `audit-cd`, `audit-security`)가 알려진 기준선에 대해 릴리스·CD·CI 보안 위생을 검증하며, 사람에게 매번 다시 확인하라고 하는 대신 머지를 게이팅하는 부분입니다.
 
-[🇬🇧 English](README.md)
+[English README](../../README.md)
 
 ## Currently implemented (현재 구현된 것)
 
@@ -17,7 +17,7 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 - **`audit_cd`** — npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases의 destination별 publish 드리프트 (in-sync / needs-publish / local-stale / not-found / unsupported) 탐지.
 - **`audit_security`** — 9개 항목 점검: 8개 core CI 프리미티브(gitleaks pin 체크, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action)와 선택 항목인 repo-author `claude-security-guidance.md`. HARDENED verdict는 8개 core 체크가 게이트하며, 이 레포 자체는 8/8 core를 통과합니다.
 - **`audit_instructions` / `audit-instructions`** — agent instruction 파일(`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot instructions)의 exact same-file duplicate, cross-file surface overlap, keyword-based risk reminder를 검토합니다. duplicate/overlap finding은 리뷰 대상이고, keyword risk summary는 advisory일 뿐 exhaustive safety나 semantic drift detection이 아닙니다.
-- **`proof-report` / `generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 함께 실행하고 고객에게 전달 가능한 [`Launch Proof Report`](docs/launch-proof-report.ko.md)를 씁니다. 수익화 가능한 인계 표면은 여기입니다: 증거 우선, "certified" 같은 과장 없음, 실제 launch-ready가 아니면 exit code 1.
+- **`proof-report` / `generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 함께 실행하고 고객에게 전달 가능한 [`Launch Proof Report`](../launch-proof-report.ko.md)를 씁니다. 수익화 가능한 인계 표면은 여기입니다: 증거 우선, "certified" 같은 과장 없음, 실제 launch-ready가 아니면 exit code 1.
 - **`add_component`** — 감사 루프의 remediation 절반: starter의 CI/CD 레이어(ci / security / dependabot / maintenance / all)를 기존 레포로 이식합니다. 기본은 dry-run이며, 파일별 plan(create / identical / skip-exists / overwrite)을 보여줍니다. dirty git tree는 강제 옵션 없이는 거부하고, 앱 코드나 secret-bearing CD workflow는 건드리지 않습니다.
 - **졸업 가이드** — `docs/graduation-from-vibe-coding.md` (+ 한국어): Lovable/Bolt/v0 export에서 GitHub Actions + 자체 deploy target으로 옮기는 5단계 경로. release/CD/security 감사 프리미티브를 사용합니다.
 
@@ -102,7 +102,7 @@ Environment
 
 ## Lovable / Bolt / v0에서 졸업하기
 
-바이브 코딩 플랫폼에서 동작하는 앱을 GitHub Actions + 자체 deploy target으로 졸업시키고 싶다면 [`docs/graduation-from-vibe-coding.ko.md`](docs/graduation-from-vibe-coding.ko.md) ([English](docs/graduation-from-vibe-coding.md)) 문서를 참고하시기 바랍니다 — `audit`, `audit-cd`, `audit-security`로 레포를 진단하고, 앱 코드는 건드리지 않은 채 매칭 starter에서 CI/CD를 이식하는 5단계 경로입니다.
+바이브 코딩 플랫폼에서 동작하는 앱을 GitHub Actions + 자체 deploy target으로 졸업시키고 싶다면 [`docs/graduation-from-vibe-coding.ko.md`](../graduation-from-vibe-coding.ko.md) ([English](../graduation-from-vibe-coding.md)) 문서를 참고하시기 바랍니다 — `audit`, `audit-cd`, `audit-security`로 레포를 진단하고, 앱 코드는 건드리지 않은 채 매칭 starter에서 CI/CD를 이식하는 5단계 경로입니다.
 
 ## 소스에서 설치
 

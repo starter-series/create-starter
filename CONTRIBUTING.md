@@ -20,7 +20,7 @@ Requires **Node.js ≥22** (see `package.json#engines`).
 - New templates — open an issue first describing the stack and target deploy platform. New stacks land as new starters in the [starter-series org](https://github.com/starter-series), not as flags on `create_project`.
 - Audit detector improvements — see `src/audit-security.ts`, `src/audit-cd.ts`, `src/audit.ts`. New detectors need a unit test in `tests/`.
 - Workflow security hardening — pinning, OIDC, least privilege.
-- Documentation fixes (English/Korean parity).
+- Documentation fixes (English canonical README, localized docs parity).
 
 ## What needs discussion first
 
@@ -36,7 +36,7 @@ Requires **Node.js ≥22** (see `package.json#engines`).
 - **Tests:** `node --test` with `tsx`. Each new branch in `src/` should have a test in `tests/`.
 - **Lint/typecheck:** `npm run lint` (= `tsc --noEmit`). `npm run build` (= `tsc`) is what CI verifies.
 - **Security:** `--ignore-scripts` on every `npm` invocation in CI. Workflow permissions are job-level least privilege. New workflows that need write scopes must justify them in the PR description.
-- **Localization:** `README.md` and `README.ko.md` ship together. Korean uses formal honorifics (존댓말). `docs/graduation-from-vibe-coding.md` and `.ko.md` likewise.
+- **Localization:** `README.md` is the English canonical root README. Localized README content ships under `docs/ko/README.md` until a public multilingual landing page becomes the primary localized surface. Korean uses formal honorifics (존댓말). `docs/graduation-from-vibe-coding.md` and `.ko.md` likewise.
 
 ## Reporting security issues
 

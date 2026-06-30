@@ -70,6 +70,10 @@ describe("npm package surface", () => {
       "package tarball must include the Launch Proof Report docs",
     );
     assert.ok(
+      files.has("docs/ko/README.md"),
+      "package tarball must include localized README content outside the root README surface",
+    );
+    assert.ok(
       files.has("server.json"),
       "package tarball must include MCP Registry metadata",
     );

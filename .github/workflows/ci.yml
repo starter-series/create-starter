@@ -78,7 +78,7 @@ jobs:
       - name: Verify EN/KO docs heading parity
         if: matrix.node-version == 22
         # Cheap structural check: same number of "## " sections in README.md
-        # and README.ko.md, same in docs/graduation-from-vibe-coding{,.ko}.md.
+        # and docs/ko/README.md, same in docs/graduation-from-vibe-coding{,.ko}.md.
         # We count only "^## " (h2 with space) to avoid matching shell
         # comments inside ```bash``` blocks. Doesn't validate translation
         # quality — just catches one-sided additions, which is the most
@@ -96,7 +96,7 @@ jobs:
             fi
             echo "  $en ↔ $ko: $en_n h2 sections (parity OK)"
           }
-          check_parity README.md README.ko.md
+          check_parity README.md docs/ko/README.md
           check_parity docs/graduation-from-vibe-coding.md docs/graduation-from-vibe-coding.ko.md
 
       - name: Security audit
