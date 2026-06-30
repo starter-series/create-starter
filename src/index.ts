@@ -15,6 +15,11 @@ import {
   type AuditSecurityReport,
 } from "./audit-security.js";
 import {
+  auditInstructions,
+  formatAuditInstructionsReport,
+  type AuditInstructionsReport,
+} from "./audit-instructions.js";
+import {
   seedSecurityGuidance,
   formatSeedSecurityGuidanceReport,
 } from "./seed-security-guidance.js";
@@ -22,6 +27,7 @@ import {
   auditReleaseOutputShape,
   auditCdOutputShape,
   auditSecurityOutputShape,
+  auditInstructionsOutputShape,
   launchProofReportOutputShape,
   seedSecurityGuidanceOutputShape,
   addComponentOutputShape,
@@ -235,6 +241,32 @@ async function runMcpServer(): Promise<void> {
         return {
           content: [
             { type: "text" as const, text: `audit_security failed: ${(e as Error).message}` },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    "audit_instructions",
+    {
+      description:
+        "Audit local agent instruction files for exact same-file duplicates, cross-file surface overlap, and advisory keyword risk summaries. Read-only; does not rewrite files and is not semantic drift or safety enforcement.",
+      inputSchema: auditPathInput,
+      outputSchema: auditInstructionsOutputShape,
+    },
+    async ({ path: repoPath }) => {
+      try {
+        const report: AuditInstructionsReport = await auditInstructions(repoPath ?? process.cwd());
+        return {
+          content: [{ type: "text" as const, text: formatAuditInstructionsReport(report) }],
+          structuredContent: report as unknown as Record<string, unknown>,
+        };
+      } catch (e) {
+        return {
+          content: [
+            { type: "text" as const, text: `audit_instructions failed: ${(e as Error).message}` },
           ],
           isError: true,
         };

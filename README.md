@@ -9,13 +9,14 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 ## Currently implemented
 
 - **CLI** — `npx @starter-series/create my-bot --template discord-bot`. One of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
-- **MCP server** — eight stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. One binary chooses the mode by argv (positional -> CLI, none -> MCP stdio).
+- **MCP server** — nine stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. One binary chooses the mode by argv (positional -> CLI, none -> MCP stdio).
 - **Claude Desktop extension** — `.mcpb` bundle on every release; drag onto the Claude Desktop settings window.
 - **Claude Code plugin + skill** — `/plugin install create-starter@starter-series` ships the MCP server and the conversational `create` skill together.
 - **MCP Registry entry** — `io.github.starter-series/create-starter`, OIDC-verified namespace, npm tarball cross-checked.
 - **`audit_release`** — detects matched starter, version vs last-tag drift, CHANGELOG drift vs merged PRs (`git log <tag>..HEAD`), publish-workflow kind (release-please / publish-on-tag / auto-release).
 - **`audit_cd`** — probes npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases for per-destination publish drift (in-sync / needs-publish / local-stale / not-found / unsupported).
 - **`audit_security`** — checks 9 items: 8 core CI primitives (gitleaks with pin check, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action) plus the optional repo-author `claude-security-guidance.md`. The 8 core checks gate the HARDENED verdict; this repo passes 8/8 core.
+- **`audit_instructions` / `audit-instructions`** — reviews agent instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot instructions) for exact same-file duplicates, cross-file surface overlap, and keyword-based risk reminders. Duplicate/overlap findings need review; keyword risk summaries are advisory only and not exhaustive safety or semantic drift detection.
 - **`proof-report` / `generate_launch_proof_report`** — runs release, CD, and security audits together and writes a client-ready [`Launch Proof Report`](docs/launch-proof-report.md). This is the monetizable handoff surface: evidence first, no "certified" claim, exit code 1 unless the repo is actually launch-ready.
 - **`add_component`** — the remediation half of the audit loop: lifts a starter's CI/CD layer (ci / security / dependabot / maintenance / all) into an *existing* repo without re-scaffolding. Dry-run by default with a per-file plan (create / identical / skip-exists / overwrite); refuses a dirty git tree unless forced; never touches app code or secrets-bearing CD workflows. The dry-run plan doubles as a drift report against the starter.
 - **Graduation guide** — `docs/graduation-from-vibe-coding.md` (+ Korean): five-step path from Lovable/Bolt/v0 exports to GitHub Actions + a real deploy target, using the three audit primitives.
@@ -37,6 +38,7 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 - **Full vendor parity in `audit_cd`.** Destinations without a public read API stay `unsupported` rather than reporting confidently-wrong state.
 - **Rewriting app code.** The graduation flow lifts CI/CD from the matching starter; it never touches application code.
 - **A general-purpose project generator.** Templates are the Starter Series 11. New stacks land as new starters, not as flags on `create_project`.
+- **Semantic instruction drift or AI safety enforcement.** `audit_instructions` is a review aid for exact duplicate/surface overlap and keyword reminders. It is not a semantic similarity engine, runtime guardrail, red-team harness, or exhaustive safety/security linter.
 
 ## Quick start — CLI
 
@@ -54,6 +56,7 @@ Usage
   create-starter audit [path]
   create-starter audit-cd [path]
   create-starter audit-security [path]
+  create-starter audit-instructions [path]
   create-starter proof-report [path] [--output <file>] [--stdout]
   create-starter seed-security-guidance [path] [--force]
   create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
@@ -196,6 +199,7 @@ Audit (each takes an optional `path` arg, default = MCP server cwd; all read-onl
 - **`audit_release`** — release-readiness diagnosis. CLI mirror: `create-starter audit [path]`.
 - **`audit_cd`** — per-destination publish-drift probe. CLI mirror: `create-starter audit-cd [path]`.
 - **`audit_security`** — baseline CI security hygiene check. CLI mirror: `create-starter audit-security [path]`.
+- **`audit_instructions`** — agent-instruction duplicate and surface-overlap review, with advisory keyword risk summaries. CLI mirror: `create-starter audit-instructions [path]`.
 - **`generate_launch_proof_report`** — combined Markdown launch handoff from release, CD, and security audits. CLI mirror: `create-starter proof-report [path] [--output <file>] [--stdout]`.
 - **`seed_security_guidance`** — generate a starter-aware `claude-security-guidance.md` draft. CLI mirror: `create-starter seed-security-guidance [path] [--force]`.
 - **`add_component`** — propose or apply starter CI/CD components to an existing repo as a dry-run plan. CLI mirror: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.

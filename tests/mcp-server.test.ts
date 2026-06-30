@@ -147,6 +147,7 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
       [
         "add_component",
         "audit_cd",
+        "audit_instructions",
         "audit_release",
         "audit_security",
         "create_project",
@@ -273,6 +274,26 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
         `audit_security: ${env} check did not run; detector may have been removed`,
       );
     }
+  });
+
+  it("audit_instructions on this repo returns structuredContent matching schema", async () => {
+    const res = await client.send({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: { name: "audit_instructions", arguments: { path: process.cwd() } },
+    });
+    assertNoValidationError(res, "audit_instructions");
+    const sc = res.result?.structuredContent as
+      | { overall?: { verdict?: string }; files?: unknown[]; riskSummaries?: unknown[] }
+      | undefined;
+    assert.ok(sc, "audit_instructions: missing structuredContent");
+    assert.ok(Array.isArray(sc.files), "audit_instructions: files is not an array");
+    assert.ok(
+      ["clean", "advisory", "attention"].includes(sc.overall!.verdict!),
+      `audit_instructions: unexpected overall.verdict = ${sc.overall!.verdict}`,
+    );
+    assert.ok(Array.isArray(sc.riskSummaries), "audit_instructions: riskSummaries is not an array");
   });
 
   it("generate_launch_proof_report returns markdown plus structured summary", async () => {
