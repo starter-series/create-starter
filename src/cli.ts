@@ -6,6 +6,10 @@ import { auditRelease, formatAuditReport } from "./audit.js";
 import { auditCd, formatAuditCdReport } from "./audit-cd.js";
 import { auditSecurity, formatAuditSecurityReport } from "./audit-security.js";
 import {
+  auditInstructions,
+  formatAuditInstructionsReport,
+} from "./audit-instructions.js";
+import {
   seedSecurityGuidance,
   formatSeedSecurityGuidanceReport,
 } from "./seed-security-guidance.js";
@@ -23,6 +27,7 @@ Usage
   create-starter audit [path]
   create-starter audit-cd [path]
   create-starter audit-security [path]
+  create-starter audit-instructions [path]
   create-starter proof-report [path] [--output <file>] [--stdout]
   create-starter seed-security-guidance [path] [--force]
   create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
@@ -36,6 +41,11 @@ Arguments
                            VS Marketplace, GitHub Releases) for publish drift
   audit-security [path]    Audit CI security hygiene (gitleaks, CodeQL, audit,
                            --ignore-scripts, Dependabot, etc.)
+  audit-instructions [path]
+                           Audit agent instruction files for exact same-file
+                           duplicates, cross-file surface overlap, and
+                           advisory keyword risk summaries. Read-only; not
+                           semantic drift or safety enforcement.
   proof-report [path]      Run audit, audit-cd, and audit-security, then write
                            launch-proof-report.md as a client-ready Markdown
                            launch-readiness handoff. Exits 1 unless READY.
@@ -72,6 +82,7 @@ Examples
   create-starter audit
   create-starter audit /path/to/repo
   create-starter audit-cd
+  create-starter audit-instructions
   create-starter --list
 `;
 
@@ -389,6 +400,15 @@ export async function runCli(argv: string[]): Promise<number> {
       auditSecurity,
       formatAuditSecurityReport,
       (r) => r.overall.verdict === "soft",
+    );
+  }
+  if (argv[0] === "audit-instructions") {
+    return runAuditSubcommand(
+      argv.slice(1),
+      "audit-instructions",
+      auditInstructions,
+      formatAuditInstructionsReport,
+      (r) => r.overall.verdict === "attention",
     );
   }
   if (argv[0] === "seed-security-guidance") {

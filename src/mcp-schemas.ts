@@ -209,6 +209,70 @@ export const auditSecurityOutputShape = {
   }),
 };
 
+// ---- audit_instructions ----
+
+const instructionRiskLabelValues = [
+  "identity",
+  "pii",
+  "approval_required",
+  "test_required",
+  "strategy_requires_ratification",
+  "logs_or_errors",
+  "security_policy",
+] as const;
+
+const instructionOccurrenceSchema = z.object({
+  path: z.string(),
+  line: z.number(),
+});
+
+const instructionExampleSchema = z.object({
+  text: z.string(),
+  occurrences: z.array(instructionOccurrenceSchema),
+  risks: z.array(z.enum(instructionRiskLabelValues)),
+});
+
+export const auditInstructionsOutputShape = {
+  repoPath: z.string(),
+  files: z.array(z.string()),
+  duplicates: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string(),
+      path: z.string(),
+      repeats: z.number(),
+      occurrences: z.array(instructionOccurrenceSchema),
+      risks: z.array(z.enum(instructionRiskLabelValues)),
+      recommendation: z.enum(["remove_duplicate", "keep_explicit"]),
+    }),
+  ),
+  surfaceOverlaps: z.array(
+    z.object({
+      id: z.string(),
+      paths: z.array(z.string()),
+      duplicateTexts: z.number(),
+      occurrences: z.number(),
+      risks: z.array(z.enum(instructionRiskLabelValues)),
+      recommendation: z.enum(["review_duplicate", "keep_explicit"]),
+      examples: z.array(instructionExampleSchema),
+    }),
+  ),
+  riskSummaries: z.array(
+    z.object({
+      id: z.string(),
+      risk: z.enum(instructionRiskLabelValues),
+      findings: z.number(),
+      occurrences: z.number(),
+      paths: z.array(z.string()),
+      examples: z.array(instructionExampleSchema),
+    }),
+  ),
+  overall: z.object({
+    verdict: z.enum(["clean", "advisory", "attention"]),
+    warnings: z.array(z.string()),
+  }),
+};
+
 // ---- launch proof report ----
 
 export const launchProofReportOutputShape = {

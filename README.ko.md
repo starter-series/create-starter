@@ -9,13 +9,14 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 ## Currently implemented (현재 구현된 것)
 
 - **CLI** — `npx @starter-series/create my-bot --template discord-bot`. 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
-- **MCP 서버** — stdio 툴 8개: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 하나의 바이너리가 argv로 모드를 선택합니다 (positional 인자 → CLI, 없음 → MCP stdio).
+- **MCP 서버** — stdio 툴 9개: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 하나의 바이너리가 argv로 모드를 선택합니다 (positional 인자 → CLI, 없음 → MCP stdio).
 - **Claude Desktop 확장** — 모든 릴리스에 `.mcpb` 번들 포함. Claude Desktop 설정 창에 드래그하면 끝.
 - **Claude Code 플러그인 + 스킬** — `/plugin install create-starter@starter-series` 한 줄로 MCP 서버와 대화형 `create` 스킬을 함께 설치.
 - **MCP Registry 등록** — `io.github.starter-series/create-starter`, OIDC 네임스페이스 검증, npm 타르볼 교차검사.
 - **`audit_release`** — 매칭 starter 감지, 버전 vs 마지막 태그 드리프트, 머지된 PR 대비 CHANGELOG 드리프트 (`git log <tag>..HEAD`), publish 워크플로우 종류 (release-please / publish-on-tag / auto-release).
 - **`audit_cd`** — npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases의 destination별 publish 드리프트 (in-sync / needs-publish / local-stale / not-found / unsupported) 탐지.
 - **`audit_security`** — 9개 항목 점검: 8개 core CI 프리미티브(gitleaks pin 체크, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action)와 선택 항목인 repo-author `claude-security-guidance.md`. HARDENED verdict는 8개 core 체크가 게이트하며, 이 레포 자체는 8/8 core를 통과합니다.
+- **`audit_instructions` / `audit-instructions`** — agent instruction 파일(`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, Copilot instructions)의 exact same-file duplicate, cross-file surface overlap, keyword-based risk reminder를 검토합니다. duplicate/overlap finding은 리뷰 대상이고, keyword risk summary는 advisory일 뿐 exhaustive safety나 semantic drift detection이 아닙니다.
 - **`proof-report` / `generate_launch_proof_report`** — release, CD, security 감사를 함께 실행하고 고객에게 전달 가능한 [`Launch Proof Report`](docs/launch-proof-report.ko.md)를 씁니다. 수익화 가능한 인계 표면은 여기입니다: 증거 우선, "certified" 같은 과장 없음, 실제 launch-ready가 아니면 exit code 1.
 - **`add_component`** — 감사 루프의 remediation 절반: starter의 CI/CD 레이어(ci / security / dependabot / maintenance / all)를 기존 레포로 이식합니다. 기본은 dry-run이며, 파일별 plan(create / identical / skip-exists / overwrite)을 보여줍니다. dirty git tree는 강제 옵션 없이는 거부하고, 앱 코드나 secret-bearing CD workflow는 건드리지 않습니다.
 - **졸업 가이드** — `docs/graduation-from-vibe-coding.md` (+ 한국어): Lovable/Bolt/v0 export에서 GitHub Actions + 자체 deploy target으로 옮기는 5단계 경로. 세 가지 감사 프리미티브를 사용합니다.
@@ -37,6 +38,7 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 - **`audit_cd`의 모든 벤더 동등 지원.** 공개 read API가 없는 destination은 확실하게 틀린 상태를 보고하기보다 `unsupported`로 남깁니다.
 - **앱 코드 재작성.** 졸업 플로우는 매칭 starter에서 CI/CD를 이식할 뿐, 애플리케이션 코드는 절대 건드리지 않습니다.
 - **범용 프로젝트 생성기.** 템플릿은 Starter Series 11개로 고정. 새로운 스택은 `create_project`의 플래그가 아니라 새로운 starter로 들어옵니다.
+- **semantic instruction drift 또는 AI safety enforcement.** `audit_instructions`는 exact duplicate/surface overlap과 keyword reminder를 위한 review aid입니다. semantic similarity engine, runtime guardrail, red-team harness, exhaustive safety/security linter가 아닙니다.
 
 ## 빠른 시작 — CLI
 
@@ -54,6 +56,7 @@ Usage
   create-starter audit [path]
   create-starter audit-cd [path]
   create-starter audit-security [path]
+  create-starter audit-instructions [path]
   create-starter proof-report [path] [--output <file>] [--stdout]
   create-starter seed-security-guidance [path] [--force]
   create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
@@ -194,6 +197,7 @@ Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동
 - **`audit_release`** — 릴리스 준비 상태 진단. CLI 미러: `create-starter audit [path]`.
 - **`audit_cd`** — destination별 publish 드리프트 탐지. CLI 미러: `create-starter audit-cd [path]`.
 - **`audit_security`** — CI 보안 위생 베이스라인 점검. CLI 미러: `create-starter audit-security [path]`.
+- **`audit_instructions`** — agent instruction duplicate와 surface-overlap review, advisory keyword risk summary. CLI 미러: `create-starter audit-instructions [path]`.
 - **`generate_launch_proof_report`** — release, CD, security 감사를 합친 Markdown 출시 인계 리포트. CLI 미러: `create-starter proof-report [path] [--output <file>] [--stdout]`.
 - **`seed_security_guidance`** — 감지된 Starter Series 템플릿에 맞는 `claude-security-guidance.md` 초안 생성. CLI 미러: `create-starter seed-security-guidance [path] [--force]`.
 - **`add_component`** — 기존 레포에 starter의 CI/CD component를 dry-run plan으로 제안하거나 적용. CLI 미러: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
