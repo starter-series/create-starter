@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { auditInstructions } from "../src/audit-instructions.ts";
+import {
+  auditInstructions,
+  formatAuditInstructionsReport,
+} from "../src/audit-instructions.ts";
 
 function tempRepo(): string {
   return mkdtempSync(join(tmpdir(), "create-starter-instructions-"));
@@ -45,6 +48,10 @@ describe("auditInstructions", () => {
       report.riskSummaries.map((summary) => summary.risk).sort(),
       ["approval_required", "test_required"],
     );
+    const formatted = formatAuditInstructionsReport(report);
+    assert.match(formatted, /SURF_01 review_duplicate duplicate_texts=1 occurrences=3 paths=AGENTS\.md, CLAUDE\.md/u);
+    assert.match(formatted, /AGENTS\.md:2, AGENTS\.md:3, CLAUDE\.md:1/u);
+    assert.match(formatted, /Advisory risk summaries:/u);
   });
 
   it("treats keyword risk summaries as advisory when there are no duplicate review findings", async () => {
