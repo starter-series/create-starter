@@ -7,7 +7,7 @@
     {
       "name": "create-starter",
       "source": ".",
-      "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives."
+      "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI."
     },
     {
       "name": "shotkit",

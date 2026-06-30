@@ -4,8 +4,8 @@
   "name": "create-starter",
   "display_name": "create-starter",
   "version": "0.4.0",
-  "description": "Scaffold and audit Starter Series projects — slash commands, skill, MCP server, and CLI with release / CD / security audit primitives.",
-  "long_description": "Downloads a Starter Series template (Discord bot, Telegram bot, Docker deploy, MCP server, and more), substitutes placeholders, handles Python package renames, and runs git init. Input is Zod-validated, extraction is atomic via sibling tmp directory, and downloads have retry/timeout/size limits. Beyond scaffolding, surfaces release / CD / security audit primitives (audit_release, audit_cd, audit_security) and a seed_security_guidance generator — all callable as slash commands, MCP tools, or CLI subcommands.",
+  "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
+  "long_description": "Downloads a Starter Series template (Discord bot, Telegram bot, Docker deploy, MCP server, and more), substitutes placeholders, handles Python package renames, and runs git init. Input is Zod-validated, extraction is atomic via sibling tmp directory, and downloads have retry/timeout/size limits. Beyond scaffolding, surfaces release / CD / security audit primitives (audit_release, audit_cd, audit_security), a combined Launch Proof Report generator, and a seed_security_guidance generator — all callable as slash commands, MCP tools, or CLI subcommands.",
   "author": {
     "name": "heznpc",
     "url": "https://github.com/heznpc"
@@ -57,6 +57,10 @@
     {
       "name": "audit_security",
       "description": "Check baseline CI security hygiene (gitleaks, CodeQL, dependency audit, license check, --ignore-scripts, Dependabot, secret-scanning, claude-code-security-review, claude-security-guidance.md)"
+    },
+    {
+      "name": "generate_launch_proof_report",
+      "description": "Generate a client-ready Markdown Launch Proof Report by combining release, publish, and security audit evidence"
     },
     {
       "name": "seed_security_guidance",
