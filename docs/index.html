@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>create-starter</title>
+    <meta
+      name="description"
+      content="create-starter scaffolds Starter Series projects, audits launch hygiene, and generates evidence-first Launch Proof Reports."
+    />
+    <meta property="og:title" content="create-starter" />
+    <meta
+      property="og:description"
+      content="A CLI and MCP server for scaffolding Starter Series projects, auditing release/CD/security/instruction hygiene, and producing Launch Proof Reports."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://starter-series.github.io/create-starter/" />
+    <link rel="canonical" href="https://starter-series.github.io/create-starter/" />
+    <link rel="alternate" hreflang="en" href="https://starter-series.github.io/create-starter/?lang=en" />
+    <link rel="alternate" hreflang="ko" href="https://starter-series.github.io/create-starter/?lang=ko" />
+    <link rel="alternate" hreflang="ja" href="https://starter-series.github.io/create-starter/?lang=ja" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="create-starter home">
+        <span class="brand-mark" aria-hidden="true">cs</span>
+        <span>create-starter</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#workflow" data-i18n="nav.workflow">Workflow</a>
+        <a href="#audits" data-i18n="nav.audits">Audits</a>
+        <a href="#handoff" data-i18n="nav.handoff">Handoff</a>
+        <a href="#install" data-i18n="nav.install">Install</a>
+      </nav>
+      <div class="language-switcher" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="ko" aria-pressed="false">KO</button>
+        <button type="button" data-lang="ja" aria-pressed="false">JA</button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <h1>create-starter</h1>
+          <p data-i18n="hero.body">
+            Scaffold Starter Series projects, audit release/CD/security/instruction hygiene, and produce evidence-first Launch Proof Reports without rewriting app code.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/starter-series/create-starter" data-i18n="hero.primary">View on GitHub</a>
+            <a class="button secondary" href="#install" data-i18n="hero.secondary">Install locally</a>
+          </div>
+        </div>
+
+        <div class="product-preview" aria-label="create-starter terminal and report preview">
+          <div class="terminal-panel">
+            <div class="terminal-top" aria-hidden="true"><span></span><span></span><span></span></div>
+            <pre><code>create-starter my-bot --template discord-bot
+create-starter audit ./my-bot
+create-starter audit-cd ./my-bot
+create-starter audit-security ./my-bot
+create-starter audit-instructions ./my-bot
+create-starter proof-report ./my-bot --stdout</code></pre>
+          </div>
+          <div class="report-panel">
+            <div class="report-line">
+              <span data-i18n="preview.release">release</span>
+              <strong data-i18n="preview.ready">ready</strong>
+            </div>
+            <div class="report-line">
+              <span data-i18n="preview.cd">cd</span>
+              <strong data-i18n="preview.review">review</strong>
+            </div>
+            <div class="report-line">
+              <span data-i18n="preview.security">security</span>
+              <strong data-i18n="preview.hardened">hardened</strong>
+            </div>
+            <div class="report-line">
+              <span data-i18n="preview.instructions">instructions</span>
+              <strong data-i18n="preview.attention">attention</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="workflow-band" aria-label="create-starter workflow">
+        <div>
+          <span>01</span>
+          <strong data-i18n="workflow.scaffold.title">Scaffold</strong>
+          <p data-i18n="workflow.scaffold.body">Start from one of the maintained Starter Series templates.</p>
+        </div>
+        <div>
+          <span>02</span>
+          <strong data-i18n="workflow.audit.title">Audit</strong>
+          <p data-i18n="workflow.audit.body">Check release, CD, security, and agent-instruction hygiene.</p>
+        </div>
+        <div>
+          <span>03</span>
+          <strong data-i18n="workflow.handoff.title">Handoff</strong>
+          <p data-i18n="workflow.handoff.body">Generate a Launch Proof Report with evidence and blockers.</p>
+        </div>
+      </section>
+
+      <section id="audits" class="section split">
+        <div>
+          <h2 data-i18n="audits.title">Audits stay narrow and inspectable.</h2>
+          <p data-i18n="audits.body">
+            The audit tools are read-only checks for launch hygiene. They avoid unsupported vendor claims and keep advisory instruction-risk reminders separate from hard duplicate or overlap findings.
+          </p>
+        </div>
+        <div class="audit-list">
+          <article>
+            <h3>audit_release</h3>
+            <p data-i18n="audits.release">Version/tag drift, changelog drift, and publish workflow detection.</p>
+          </article>
+          <article>
+            <h3>audit_cd</h3>
+            <p data-i18n="audits.cd">Public registry drift for supported destinations; unsupported destinations stay explicit.</p>
+          </article>
+          <article>
+            <h3>audit_security</h3>
+            <p data-i18n="audits.security">Core CI hardening checks such as gitleaks, CodeQL, audits, and least-privilege workflow habits.</p>
+          </article>
+          <article>
+            <h3>audit_instructions</h3>
+            <p data-i18n="audits.instructions">Exact duplicates, cross-file overlap, and keyword reminders for human review.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="handoff" class="section report">
+        <div>
+          <h2 data-i18n="handoff.title">Launch Proof Reports are evidence, not certification.</h2>
+          <p data-i18n="handoff.body">
+            The report combines release, CD, security, and instruction review into one handoff document. It exits non-zero when the repository is not actually launch-ready.
+          </p>
+        </div>
+        <pre><code># Launch Proof Report
+
+release: ready
+cd: review
+security: hardened
+instructions: attention
+
+blockers:
+- publish destination needs review
+- instruction overlap needs owner decision</code></pre>
+      </section>
+
+      <section id="install" class="section install">
+        <div>
+          <h2 data-i18n="install.title">Use it as CLI, MCP server, plugin, or Desktop extension.</h2>
+          <p data-i18n="install.body">
+            One binary switches between CLI and MCP stdio. The package also ships Claude Code plugin metadata, skills, and the release-built Desktop extension bundle.
+          </p>
+        </div>
+        <pre><code>npx @starter-series/create my-bot --template discord-bot
+
+git clone https://github.com/starter-series/create-starter
+cd create-starter
+npm ci --ignore-scripts
+npm test</code></pre>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span data-i18n="footer.status">Read-only launch hygiene tools for Starter Series projects.</span>
+      <a href="https://github.com/starter-series/create-starter">GitHub</a>
+      <a href="./ko/README.md" data-i18n="footer.ko">Korean README</a>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
