@@ -209,7 +209,7 @@ export function formatAddComponentReport(r: AddComponentReport): string {
   if (r.dryRun) {
     lines.push("");
     if (r.plan.some((p) => p.action === "create")) {
-      lines.push("review the plan above, then apply with: create-starter add-component [path] --apply");
+      lines.push("review the plan above, then apply with: starter-series add-component [path] --apply");
     } else if (skipped.length === 0) {
       lines.push("nothing to do — target already matches the starter.");
     }

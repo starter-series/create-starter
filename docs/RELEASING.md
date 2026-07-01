@@ -1,6 +1,6 @@
 # Releasing create-starter
 
-This package (`@starter-series/create`) publishes to npm from CI via a GitHub
+This package (`starter-series`) publishes to npm from CI via a GitHub
 OIDC **trusted publisher** — no long-lived `NPM_TOKEN`. The CD workflow exchanges
 a short-lived OIDC token for publish rights at release time and uploads with
 provenance (`package.json#publishConfig.provenance`).

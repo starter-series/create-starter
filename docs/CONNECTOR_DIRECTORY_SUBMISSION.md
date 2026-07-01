@@ -17,13 +17,13 @@
 | **Category** | Developer Tools / Scaffolding |
 | **Author** | heznpc |
 | **License** | MIT |
-| **Version at submission** | 0.3.0 |
+| **Version at submission** | 0.4.0 |
 | **Homepage URL** | https://github.com/starter-series/create-starter#readme |
 | **Documentation URL** | https://github.com/starter-series/create-starter#readme |
 | **Source URL** | https://github.com/starter-series/create-starter |
 | **Issues / Support URL** | https://github.com/starter-series/create-starter/issues |
 | **Privacy policy URL** | https://github.com/starter-series/create-starter/blob/main/docs/PRIVACY.md *(TODO: publish before submission if reviewer asks; current stance is "no data collection" — can inline into this dossier)* |
-| **npm package** | https://www.npmjs.com/package/@starter-series/create |
+| **npm package** | Release target: https://www.npmjs.com/package/starter-series (verify after npm publish) |
 | **MCP Registry entry** | `io.github.starter-series/create-starter` (https://registry.modelcontextprotocol.io/) |
 
 ### Short description (≤ 160 chars)
@@ -36,15 +36,15 @@
 >
 > It downloads the selected template tarball from GitHub, substitutes placeholders (project name, description), handles Python package renames (pyproject + `src/` directory), and runs `git init`. Inputs are Zod-validated before any filesystem write. Extraction happens in a sibling tmp directory and the final path only appears after an atomic `rename` — a failed scaffold never leaves half-written state. Downloads have a 30 s timeout, 3-attempt exponential backoff, and a 50 MB size cap. No credentials handled, no telemetry.
 >
-> One tool per action: `list_templates` enumerates templates, `create_project` scaffolds one. A bundled Claude Code skill (`skills/create/SKILL.md`) guides the conversation. Installs as Claude Code plugin, Claude Desktop `.mcpb`, or plain `npx`.
+> The MCP surface exposes nine tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, and `add_component`. A bundled Claude Code skill (`skills/create/SKILL.md`) guides the conversation. Installs as Claude Code plugin, Claude Desktop `.mcpb`, or plain `npx`.
 
 ### Installation commands per channel
 
 | Channel | Command |
 |---|---|
-| Claude Desktop (.mcpb) | Drag `create-starter-0.3.0.mcpb` from [latest GitHub release](https://github.com/starter-series/create-starter/releases/latest) onto the Claude Desktop settings window. |
+| Claude Desktop (.mcpb) | Drag `create-starter-0.4.0.mcpb` from [latest GitHub release](https://github.com/starter-series/create-starter/releases/latest) onto the Claude Desktop settings window. |
 | Claude Code plugin | `/plugin marketplace add starter-series/create-starter` then `/plugin install create-starter@starter-series` |
-| npm CLI | `npx @starter-series/create <name> --template <id>` |
+| npm CLI | After npm publish: `npx starter-series <name> --template <id>` |
 | MCP server (manual) | Register `node /abs/path/dist/index.js` under `mcpServers` in the client's config JSON. |
 | MCP Registry | `io.github.starter-series/create-starter` (clients with registry discovery) |
 
@@ -56,10 +56,10 @@
 |---|---|
 | **Transport** | `stdio` (local only). **No remote endpoint, no Streamable-HTTP server.** |
 | **Authentication** | None. No OAuth, no API keys, no tokens. |
-| **Capabilities exposed** | 2 tools, 1 Claude Code skill. No resources, no prompts. |
-| **Tool list** | `list_templates` (read-only), `create_project` (destructive — writes to disk) |
+| **Capabilities exposed** | 9 tools, 1 Claude Code skill. No resources, no prompts. |
+| **Tool list** | `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component` |
 | **Tool annotations** | `list_templates` → `readOnlyHint: true`. `create_project` → `destructiveHint: false` (idempotent-on-failure: atomic rename or full rollback). |
-| **Runtime** | Node.js ≥ 20, cross-platform (macOS / Linux / Windows). Bundled `node_modules/` in `.mcpb`. |
+| **Runtime** | Node.js ≥ 22, cross-platform (macOS / Linux / Windows). Bundled `node_modules/` in `.mcpb`. |
 | **Host binaries invoked** | `git` (optional; scaffold succeeds without it — warning on stderr only). No other subprocesses. |
 | **Network egress** | HTTPS GET to `github.com/starter-series/<template>/archive/refs/heads/main.tar.gz` only. No other hosts. |
 | **Filesystem writes** | Only under user-supplied `output_dir` (default `./<name>`). Extraction happens in sibling `.<name>-incomplete-<rand>/`; atomic `rename` on success, recursive `rm` on any failure. |
@@ -97,13 +97,13 @@ The only third party is GitHub, for downloading public template tarballs from th
 Entirely on the user's local disk. The connector runs as the user's local process; files are written under paths the user supplies.
 
 **Q: How is the connector updated?**
-Users update via their chosen channel: `npm install -g @starter-series/create@latest`, reinstalling the plugin from the marketplace, or dragging a newer `.mcpb` onto Claude Desktop. There is no auto-update mechanism and no background process.
+After npm publish, users update via their chosen channel: `npm install -g starter-series`, reinstalling the plugin from the marketplace, or dragging a newer `.mcpb` onto Claude Desktop. There is no auto-update mechanism and no background process.
 
 ---
 
 ## 4. Known limitations
 
-- **Host dependencies.** Requires Node.js ≥ 20 on the host. `git` is optional — the scaffold completes without it but leaves no `.git` directory.
+- **Host dependencies.** Requires Node.js ≥ 22 on the host. `git` is optional — the scaffold completes without it but leaves no `.git` directory.
 - **Template `ref` pinning.** The default template ref is `main`. Each scaffold gets the then-current tip of the template branch; there is no per-scaffold version pinning. This is deliberate (templates are meant to stay modern) but it does mean two scaffolds days apart may differ.
 - **No execution sandbox.** The connector trusts the host filesystem permissions. If the user passes an `output_dir` they own, the scaffold writes there; if they pass a system path they can write to, it will write there. No extra sandboxing is applied on top of the OS.
 - **GitHub availability.** The template fetch requires `github.com` reachability. Behind a corporate proxy that blocks GitHub, the scaffold fails with a retry-exhausted network error.
@@ -130,10 +130,10 @@ Response SLA: best-effort, typically within 72 hours.
 | Client | Install path | Status |
 |---|---|---|
 | **Claude Code** | Plugin marketplace (`starter-series/create-starter`) | Tested — plugin bundles MCP server + `create` skill. Primary development target. |
-| **Claude Desktop** | `.mcpb` drag-install | Tested — `create-starter-0.3.0.mcpb` attached to every GitHub release. |
+| **Claude Desktop** | `.mcpb` drag-install | Tested path — release artifact is `create-starter-<version>.mcpb`. |
 | **Cursor** | Manual `mcpServers` JSON entry | Untested end-to-end but expected to work (standard stdio MCP client). |
 | **Windsurf** | Manual `mcpServers` JSON entry | Untested end-to-end but expected to work (standard stdio MCP client). |
-| **MCP Registry-aware clients** | `io.github.starter-series/create-starter` | Registry entry live; client-side discovery not verified in third-party clients. |
+| **MCP Registry-aware clients** | `io.github.starter-series/create-starter` | Registry entry target; verify after npm package publication. Client-side discovery not verified in third-party clients. |
 
 OS coverage: macOS (arm64, x64), Linux (x64), Windows (x64). All three are smoke-tested via the GitHub Actions matrix defined in `.github/workflows/ci.yml`.
 
@@ -143,9 +143,9 @@ OS coverage: macOS (arm64, x64), Linux (x64), Windows (x64). All three are smoke
 
 Run through before clicking Submit on `https://claude.ai/settings/plugins/submit`:
 
-- [ ] `v0.3.0` (or later) is the **latest** version on npm (`npm view @starter-series/create version`).
+- [ ] `v0.4.0` (or later) is the **latest** version on npm (`npm view starter-series version`).
 - [ ] `server.json` version matches the npm version.
-- [ ] MCP Registry entry for `io.github.starter-series/create-starter` is **live and healthy**.
+- [ ] MCP Registry entry for `io.github.starter-series/create-starter` is **live and healthy after npm publication**.
 - [ ] Latest GitHub release has `create-starter-<version>.mcpb` attached and verified to install cleanly into Claude Desktop (drag-and-drop, then call `list_templates`).
 - [ ] `README.md` and `docs/ko/README.md` reflect the submitted version.
 - [ ] CI green on `main` (`ci.yml`, `publish.yml`, `publish-mcp-registry.yml`).
@@ -156,7 +156,6 @@ Run through before clicking Submit on `https://claude.ai/settings/plugins/submit
 - [ ] Homepage, documentation, source, and support URLs return HTTP 200.
 - [ ] Template table in the long description matches `list_templates` output at submission time.
 - [ ] Demo video URL (optional, not accepted in carousel but can link in description) — e.g. a 30–60 s asciinema/GIF demo hosted at `https://github.com/starter-series/create-starter#demo` if created.
-- [ ] Maintainer email (`wantcongz@gmail.com`) still monitored.
 
 ---
 
@@ -217,11 +216,17 @@ Write: local filesystem writes under the user-supplied output_dir only.
 [Tool list]
 1. list_templates — read-only; returns the template catalog as JSON.
 2. create_project — writes; scaffolds a project from a selected template.
+3. audit_release — release-readiness diagnosis.
+4. audit_cd — per-destination publish-drift probe.
+5. audit_security — baseline CI security hygiene check.
+6. audit_instructions — agent-instruction duplicate and surface-overlap review.
+7. generate_launch_proof_report — combined launch handoff.
+8. seed_security_guidance — starter-aware security guidance draft.
+9. add_component — dry-run or apply starter CI/CD components to an existing repo.
 
 [Tool annotations confirmation]
-Both tools set `title` and the appropriate hint. list_templates → readOnlyHint=true.
-create_project → readOnlyHint=false; destructive operations confined to an atomic
-rename of a fresh sibling directory under the user-specified output_dir.
+Tools set `title` and the appropriate read/write hints. Write-capable tools are
+confined to explicit user-selected paths or dry-run output by default.
 
 [Third-party connections]
 GitHub only, for public template tarball download. No other external services.
@@ -239,7 +244,8 @@ No account required. Reviewer can install the .mcpb, call list_templates, then
 create_project with template=mcp-server, name=demo to produce a working scaffold.
 
 [GA date]
-2026-04-24 (v0.3.0 currently GA on npm and MCP Registry).
+2026-04-24 initial release; submit this dossier only after verifying the current
+`0.4.0` npm package metadata and MCP Registry entry are prepared; verify both are live after publication.
 
 [Surfaces tested]
 - Claude Code (plugin) — tested

@@ -88,6 +88,11 @@ jobs:
             echo "::error::server.json name ($SERVER_NAME) does not match package.json mcpName ($PKG_MCP_NAME)"
             exit 1
           fi
+          SERVER_PACKAGE_IDENTIFIER=$(node -e "console.log(require('./server.json').packages?.[0]?.identifier || '')")
+          if [ "$SERVER_PACKAGE_IDENTIFIER" != "${{ steps.pkg.outputs.name }}" ]; then
+            echo "::error::server.json npm package identifier ($SERVER_PACKAGE_IDENTIFIER) does not match package.json name (${{ steps.pkg.outputs.name }})"
+            exit 1
+          fi
           echo "All 4 manifests aligned at v$PKG_VERSION"
 
       - uses: actions/setup-node@v6

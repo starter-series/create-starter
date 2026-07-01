@@ -16,12 +16,25 @@ interface PackResult {
 }
 
 function readPackageJson(): {
+  name: string;
   bin: Record<string, string>;
   mcpName: string;
   files: string[];
 } {
   return JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf-8"));
 }
+
+const expectedMcpTools = [
+  "list_templates",
+  "create_project",
+  "audit_release",
+  "audit_cd",
+  "audit_security",
+  "audit_instructions",
+  "generate_launch_proof_report",
+  "seed_security_guidance",
+  "add_component",
+];
 
 function npmPackDryRun(): PackResult {
   const out = execFileSync("npm", ["pack", "--dry-run", "--json"], {
@@ -40,10 +53,11 @@ describe("npm package surface", () => {
     const pack = npmPackDryRun();
     const files = new Map(pack.files.map((f) => [f.path, f]));
 
+    assert.equal(pkg.bin["starter-series"], "dist/index.js");
     assert.equal(pkg.bin["create-starter"], "dist/index.js");
     assert.ok(
-      files.has(pkg.bin["create-starter"]),
-      "package tarball must include the create-starter bin target",
+      files.has(pkg.bin["starter-series"]),
+      "package tarball must include the starter-series bin target",
     );
     assert.ok(
       files.has("dist/cli.js"),
@@ -78,7 +92,28 @@ describe("npm package surface", () => {
       "package tarball must include MCP Registry metadata",
     );
 
-    const binFile = files.get(pkg.bin["create-starter"])!;
+    const binFile = files.get(pkg.bin["starter-series"])!;
     assert.equal(binFile.mode, 0o755, "bin target should be executable in the tarball");
+  });
+
+  it("keeps registry, bundle, and runtime tool metadata aligned", () => {
+    const pkg = readPackageJson();
+    const manifest = JSON.parse(readFileSync(join(repoRoot, "manifest.json"), "utf-8")) as {
+      tools: Array<{ name: string }>;
+    };
+    const server = JSON.parse(readFileSync(join(repoRoot, "server.json"), "utf-8")) as {
+      packages: Array<{ identifier: string }>;
+    };
+
+    assert.deepEqual(
+      manifest.tools.map((tool) => tool.name),
+      expectedMcpTools,
+      "Claude Desktop manifest tools must match the runtime MCP surface",
+    );
+    assert.equal(
+      server.packages[0]?.identifier,
+      pkg.name,
+      "MCP Registry npm package identifier must match package.json name",
+    );
   });
 });

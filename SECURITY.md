@@ -11,10 +11,9 @@ The latest published `0.x` minor on npm receives security fixes. Earlier minors 
 
 ## Reporting a vulnerability
 
-**Please do not file public GitHub issues for security problems.** Use one of the private channels below.
+**Please do not file public GitHub issues for security problems.** Use GitHub private vulnerability reporting.
 
-- **GitHub private advisory** (preferred) — open a draft at <https://github.com/starter-series/create-starter/security/advisories/new>. This routes directly to the maintainer and triggers GHSA workflows.
-- **Email** — `wantcongz@gmail.com` with subject `[create-starter security] <short description>`.
+- **GitHub private advisory** — open a draft at <https://github.com/starter-series/create-starter/security/advisories/new>. This routes directly to the maintainer and triggers GHSA workflows.
 
 Please include:
 
@@ -34,7 +33,7 @@ Please include:
 
 In scope:
 
-- The `@starter-series/create` npm package (CLI + MCP server).
+- The `starter-series` npm package (CLI + MCP server).
 - The `.mcpb` Claude Desktop bundle.
 - The `create-starter` Claude Code plugin and bundled `create` skill.
 - The `audit_release` / `audit_cd` / `audit_security` MCP tools.

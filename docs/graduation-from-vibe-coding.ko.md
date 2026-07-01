@@ -44,9 +44,9 @@
 ```bash
 git clone https://github.com/<you>/<your-app>.git
 cd <your-app>
-npx -y @starter-series/create audit
-npx -y @starter-series/create audit-cd
-npx -y @starter-series/create audit-security
+npx -y starter-series audit
+npx -y starter-series audit-cd
+npx -y starter-series audit-security
 ```
 
 3개의 리포트가 나온다:
@@ -124,7 +124,7 @@ cp /tmp/starter/CHANGELOG.md .         # 같은 릴리즈 노트 포맷 채택
 
 ```bash
 # 깨끗한 sibling 폴더에 scaffold
-npx -y @starter-series/create my-fresh --template ${TARGET}
+npx -y starter-series my-fresh --template ${TARGET}
 
 # 파일 비교 후 필요한 것만 복사
 diff -r my-fresh/.github .github
@@ -190,7 +190,7 @@ git push --tags
 워크플로우 실행 지켜본 후 `audit-cd` 재실행:
 
 ```bash
-npx -y @starter-series/create audit-cd
+npx -y starter-series audit-cd
 # → npm/Open VSX/AMO/GH Releases가 이제 in-sync 보고
 ```
 

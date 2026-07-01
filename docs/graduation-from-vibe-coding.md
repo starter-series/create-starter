@@ -46,9 +46,9 @@ Clone your platform's GitHub repo locally and run the three audit primitives.
 ```bash
 git clone https://github.com/<you>/<your-app>.git
 cd <your-app>
-npx -y @starter-series/create audit
-npx -y @starter-series/create audit-cd
-npx -y @starter-series/create audit-security
+npx -y starter-series audit
+npx -y starter-series audit-cd
+npx -y starter-series audit-security
 ```
 
 You'll get three reports:
@@ -127,7 +127,7 @@ cp /tmp/starter/CHANGELOG.md .         # adopts the same release notes format
 
 ```bash
 # Scaffold a fresh sibling
-npx -y @starter-series/create my-fresh --template ${TARGET}
+npx -y starter-series my-fresh --template ${TARGET}
 
 # Compare files, copy what you want
 diff -r my-fresh/.github .github
@@ -193,7 +193,7 @@ git push --tags
 Watch the workflow run, then re-run `audit-cd`:
 
 ```bash
-npx -y @starter-series/create audit-cd
+npx -y starter-series audit-cd
 # → npm/Open VSX/AMO/GH Releases now report in-sync
 ```
 

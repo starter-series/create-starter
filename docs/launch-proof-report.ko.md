@@ -8,17 +8,17 @@ Launch Proof Report는 create-starter의 release, CD, security, instruction-revi
 
 | Gate | 원천 명령 | 증명하는 것 |
 | --- | --- | --- |
-| Release | `create-starter audit` | 버전, changelog, 매칭 starter, publish workflow 구조가 출시 가능한 형태인지 확인합니다. |
-| CD | `create-starter audit-cd` | 공개 read API가 있는 registry 또는 release destination에서 로컬 버전과 공개 버전의 드리프트를 확인합니다. |
-| Security | `create-starter audit-security` | secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, security-review workflow 등 기본 CI 보안 위생을 확인합니다. |
-| Instructions | `create-starter audit-instructions` | agent instruction 파일의 exact duplicate review finding과 cross-file surface overlap을 확인합니다. Keyword risk summary는 advisory일 뿐, exhaustive safety나 semantic drift detection이 아닙니다. |
+| Release | `starter-series audit` | 버전, changelog, 매칭 starter, publish workflow 구조가 출시 가능한 형태인지 확인합니다. |
+| CD | `starter-series audit-cd` | 공개 read API가 있는 registry 또는 release destination에서 로컬 버전과 공개 버전의 드리프트를 확인합니다. |
+| Security | `starter-series audit-security` | secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, security-review workflow 등 기본 CI 보안 위생을 확인합니다. |
+| Instructions | `starter-series audit-instructions` | agent instruction 파일의 exact duplicate review finding과 cross-file surface overlap을 확인합니다. Keyword risk summary는 advisory일 뿐, exhaustive safety나 semantic drift detection이 아닙니다. |
 
 이 리포트는 법률, 스토어 심사, 개인정보 처리, 보안 인증 상태를 보증하지 않습니다. 기술적인 출시 준비도 인계 문서입니다.
 
 ## 실행
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo
+npx -y starter-series proof-report /path/to/repo
 ```
 
 기본 출력 파일은 다음과 같습니다.
@@ -30,13 +30,13 @@ npx -y @starter-series/create proof-report /path/to/repo
 다른 에이전트나 CI 단계가 Markdown을 바로 받아야 한다면 `--stdout`을 사용합니다.
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo --stdout
+npx -y starter-series proof-report /path/to/repo --stdout
 ```
 
 인계 폴더에 저장하려면 `--output`을 사용합니다.
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo --output reports/launch-proof.md
+npx -y starter-series proof-report /path/to/repo --output reports/launch-proof.md
 ```
 
 `--output`은 대상 레포 내부 기준으로 해석됩니다. 레포 밖으로 벗어나는 경로는 거부합니다.

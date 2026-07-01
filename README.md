@@ -8,11 +8,11 @@ Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md
 
 ## Currently implemented
 
-- **CLI** — `npx @starter-series/create my-bot --template discord-bot`. One of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
+- **CLI** — package and binary identity are `starter-series`; after the unscoped npm package is published, `npx starter-series my-bot --template discord-bot` scaffolds one of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
 - **MCP server** — nine stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. One binary chooses the mode by argv (positional -> CLI, none -> MCP stdio).
 - **Claude Desktop extension** — `.mcpb` bundle on every release; drag onto the Claude Desktop settings window.
 - **Claude Code plugin + skill** — `/plugin install create-starter@starter-series` ships the MCP server and the conversational `create` skill together.
-- **MCP Registry entry** — `io.github.starter-series/create-starter`, OIDC-verified namespace, npm tarball cross-checked.
+- **MCP Registry metadata** — `io.github.starter-series/create-starter`; registry submission is gated on the unscoped npm package being live and tarball-verified.
 - **`audit_release`** — detects matched starter, version vs last-tag drift, CHANGELOG drift vs merged PRs (`git log <tag>..HEAD`), publish-workflow kind (release-please / publish-on-tag / auto-release).
 - **`audit_cd`** — probes npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases for per-destination publish drift (in-sync / needs-publish / local-stale / not-found / unsupported).
 - **`audit_security`** — checks 9 items: 8 core CI primitives (gitleaks with pin check, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action) plus the optional repo-author `claude-security-guidance.md`. The 8 core checks gate the HARDENED verdict; this repo passes 8/8 core.
@@ -43,25 +43,29 @@ Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md
 ## Quick start — CLI
 
 ```bash
-npx @starter-series/create my-bot --template discord-bot
-# or, after cloning and building:
+# After the unscoped npm package is published:
+npx starter-series my-bot --template discord-bot
+
+# Before npm publication, run from source:
+npm ci
+npm run build
 node dist/index.js my-bot --template discord-bot
 ```
 
 ```
-create-starter — scaffold a project from the Starter Series.
+starter-series — scaffold a project from the Starter Series.
 
 Usage
-  create-starter <name> --template <id> [options]
-  create-starter audit [path]
-  create-starter audit-cd [path]
-  create-starter audit-security [path]
-  create-starter audit-instructions [path]
-  create-starter proof-report [path] [--output <file>] [--stdout]
-  create-starter seed-security-guidance [path] [--force]
-  create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
-  create-starter --list
-  create-starter --help
+  starter-series <name> --template <id> [options]
+  starter-series audit [path]
+  starter-series audit-cd [path]
+  starter-series audit-security [path]
+  starter-series audit-instructions [path]
+  starter-series proof-report [path] [--output <file>] [--stdout]
+  starter-series seed-security-guidance [path] [--force]
+  starter-series add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
+  starter-series --list
+  starter-series --help
 
 Options
   -t, --template <id>      Template ID (see --list)
@@ -98,7 +102,7 @@ Environment
 | `cloudflare-pages` | Wrangler + Pages |
 | `docker-deploy` | any language + GHCR + SSH |
 
-Run `create-starter --list` (CLI) or call `list_templates` (MCP) for the authoritative, up-to-date list.
+Run `starter-series --list` (CLI) or call `list_templates` (MCP) for the authoritative, up-to-date list.
 
 ## Graduating from Lovable / Bolt / v0
 
@@ -170,13 +174,13 @@ Point at a git clone so edits in `skills/create/SKILL.md` or `dist/index.js` tak
 
 ## Use via MCP Registry
 
-This server is published to the [Official MCP Registry](https://registry.modelcontextprotocol.io/) under the namespace:
+After registry publication, this server uses the [Official MCP Registry](https://registry.modelcontextprotocol.io/) namespace:
 
 ```
 io.github.starter-series/create-starter
 ```
 
-MCP-compatible clients that integrate registry discovery can install it by name without manual path wiring. The registry entry points at the npm package `@starter-series/create`, so `npx` runs the same stdio server described above.
+MCP-compatible clients that integrate registry discovery can install it by name without manual path wiring. The registry entry points at the npm package `starter-series`, so the registry step must run only after the npm package is published and verified.
 
 Ownership is verified through GitHub OIDC (namespace `io.github.starter-series/*`) and npm tarball inspection (`package.json#mcpName`). See [`.github/workflows/publish-mcp-registry.yml`](https://github.com/starter-series/create-starter/blob/main/.github/workflows/publish-mcp-registry.yml) for the publish flow.
 
@@ -196,13 +200,13 @@ Scaffolding:
 
 Audit (each takes an optional `path` arg, default = MCP server cwd; all read-only):
 
-- **`audit_release`** — release-readiness diagnosis. CLI mirror: `create-starter audit [path]`.
-- **`audit_cd`** — per-destination publish-drift probe. CLI mirror: `create-starter audit-cd [path]`.
-- **`audit_security`** — baseline CI security hygiene check. CLI mirror: `create-starter audit-security [path]`.
-- **`audit_instructions`** — agent-instruction duplicate and surface-overlap review, with advisory keyword risk summaries. CLI mirror: `create-starter audit-instructions [path]`.
-- **`generate_launch_proof_report`** — combined Markdown launch handoff from release, CD, security, and instruction-review audits. CLI mirror: `create-starter proof-report [path] [--output <file>] [--stdout]`.
-- **`seed_security_guidance`** — generate a starter-aware `claude-security-guidance.md` draft. CLI mirror: `create-starter seed-security-guidance [path] [--force]`.
-- **`add_component`** — propose or apply starter CI/CD components to an existing repo as a dry-run plan. CLI mirror: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
+- **`audit_release`** — release-readiness diagnosis. CLI mirror: `starter-series audit [path]`.
+- **`audit_cd`** — per-destination publish-drift probe. CLI mirror: `starter-series audit-cd [path]`.
+- **`audit_security`** — baseline CI security hygiene check. CLI mirror: `starter-series audit-security [path]`.
+- **`audit_instructions`** — agent-instruction duplicate and surface-overlap review, with advisory keyword risk summaries. CLI mirror: `starter-series audit-instructions [path]`.
+- **`generate_launch_proof_report`** — combined Markdown launch handoff from release, CD, security, and instruction-review audits. CLI mirror: `starter-series proof-report [path] [--output <file>] [--stdout]`.
+- **`seed_security_guidance`** — generate a starter-aware `claude-security-guidance.md` draft. CLI mirror: `starter-series seed-security-guidance [path] [--force]`.
+- **`add_component`** — propose or apply starter CI/CD components to an existing repo as a dry-run plan. CLI mirror: `starter-series add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
 
 ## Safety & reliability
 

@@ -20,19 +20,19 @@ import {
 } from "./proof-report.js";
 import { readVersion } from "./version.js";
 
-const HELP = `create-starter — scaffold and audit Starter Series projects.
+const HELP = `starter-series — scaffold and audit Starter Series projects.
 
 Usage
-  create-starter <name> --template <id> [options]
-  create-starter audit [path]
-  create-starter audit-cd [path]
-  create-starter audit-security [path]
-  create-starter audit-instructions [path]
-  create-starter proof-report [path] [--output <file>] [--stdout]
-  create-starter seed-security-guidance [path] [--force]
-  create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
-  create-starter --list
-  create-starter --help
+  starter-series <name> --template <id> [options]
+  starter-series audit [path]
+  starter-series audit-cd [path]
+  starter-series audit-security [path]
+  starter-series audit-instructions [path]
+  starter-series proof-report [path] [--output <file>] [--stdout]
+  starter-series seed-security-guidance [path] [--force]
+  starter-series add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
+  starter-series --list
+  starter-series --help
 
 Arguments
   <name>                   Project name ([A-Za-z0-9_-], must start with alnum)
@@ -78,13 +78,13 @@ Environment
   CREATE_STARTER_DEBUG=1   Emit verbose stderr logs
 
 Examples
-  create-starter my-bot --template discord-bot
-  create-starter my-api --template mcp-server --description "My coding agent"
-  create-starter audit
-  create-starter audit /path/to/repo
-  create-starter audit-cd
-  create-starter audit-instructions
-  create-starter --list
+  starter-series my-bot --template discord-bot
+  starter-series my-api --template mcp-server --description "My coding agent"
+  starter-series audit
+  starter-series audit /path/to/repo
+  starter-series audit-cd
+  starter-series audit-instructions
+  starter-series --list
 `;
 
 interface Parsed {
@@ -437,7 +437,7 @@ export async function runCli(argv: string[]): Promise<number> {
   }
 
   if (parsed.values.version) {
-    process.stdout.write(`create-starter ${readVersion()}\n`);
+    process.stdout.write(`starter-series ${readVersion()}\n`);
     return 0;
   }
 

@@ -173,7 +173,7 @@ export function formatLaunchProofReport(report: LaunchProofReport): string {
   if (report.overall.verdict === "ready") {
     out.push("- Tag or publish only through the configured release workflow, then archive this report with the release evidence.");
   } else {
-    out.push("- Fix failed gates first, rerun `create-starter proof-report`, and keep the regenerated report as the launch handoff.");
+    out.push("- Fix failed gates first, rerun `starter-series proof-report`, and keep the regenerated report as the launch handoff.");
   }
   out.push("- If this product needs store assets, run the matching asset generator such as `shotkit` before submission.");
   out.push("");
