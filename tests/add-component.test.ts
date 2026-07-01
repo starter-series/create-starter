@@ -287,7 +287,7 @@ describe("addComponent — cold-start rescue of a vibe-coded export", () => {
       assert.match(warning!, /--starter/);
       const text = formatAddComponentReport(r);
       assert.match(text, /mode: DRY-RUN/);
-      assert.match(text, /review the plan above, then apply with: create-starter add-component \[path\] --apply/);
+      assert.match(text, /review the plan above, then apply with: starter-series add-component \[path\] --apply/);
       assert.match(text, /warning: detected 'cloudflare-pages'/);
     } finally {
       rmSync(repo, { recursive: true, force: true });

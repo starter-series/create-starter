@@ -8,11 +8,11 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 ## Currently implemented (현재 구현된 것)
 
-- **CLI** — `npx @starter-series/create my-bot --template discord-bot`. 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
+- **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. unscoped npm 패키지가 게시된 뒤에는 `npx starter-series my-bot --template discord-bot`로 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
 - **MCP 서버** — stdio 툴 9개: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 하나의 바이너리가 argv로 모드를 선택합니다 (positional 인자 → CLI, 없음 → MCP stdio).
 - **Claude Desktop 확장** — 모든 릴리스에 `.mcpb` 번들 포함. Claude Desktop 설정 창에 드래그하면 끝.
 - **Claude Code 플러그인 + 스킬** — `/plugin install create-starter@starter-series` 한 줄로 MCP 서버와 대화형 `create` 스킬을 함께 설치.
-- **MCP Registry 등록** — `io.github.starter-series/create-starter`, OIDC 네임스페이스 검증, npm 타르볼 교차검사.
+- **MCP Registry 메타데이터** — `io.github.starter-series/create-starter`; registry 제출은 unscoped npm 패키지가 실제로 게시되고 tarball 검증이 끝난 뒤에만 진행합니다.
 - **`audit_release`** — 매칭 starter 감지, 버전 vs 마지막 태그 드리프트, 머지된 PR 대비 CHANGELOG 드리프트 (`git log <tag>..HEAD`), publish 워크플로우 종류 (release-please / publish-on-tag / auto-release).
 - **`audit_cd`** — npm, PyPI, Open VSX, VS Marketplace, AMO, GitHub Releases의 destination별 publish 드리프트 (in-sync / needs-publish / local-stale / not-found / unsupported) 탐지.
 - **`audit_security`** — 9개 항목 점검: 8개 core CI 프리미티브(gitleaks pin 체크, CodeQL, dependency audit, license check, `--ignore-scripts`, Dependabot grouped, secret-scanning hint, claude-code-security-review Action)와 선택 항목인 repo-author `claude-security-guidance.md`. HARDENED verdict는 8개 core 체크가 게이트하며, 이 레포 자체는 8/8 core를 통과합니다.
@@ -43,25 +43,29 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 ## 빠른 시작 — CLI
 
 ```bash
-npx @starter-series/create my-bot --template discord-bot
-# 또는 clone/build 후 직접:
+# unscoped npm 패키지가 게시된 뒤:
+npx starter-series my-bot --template discord-bot
+
+# npm 게시 전에는 소스에서 실행:
+npm ci
+npm run build
 node dist/index.js my-bot --template discord-bot
 ```
 
 ```
-create-starter — scaffold a project from the Starter Series.
+starter-series — scaffold a project from the Starter Series.
 
 Usage
-  create-starter <name> --template <id> [options]
-  create-starter audit [path]
-  create-starter audit-cd [path]
-  create-starter audit-security [path]
-  create-starter audit-instructions [path]
-  create-starter proof-report [path] [--output <file>] [--stdout]
-  create-starter seed-security-guidance [path] [--force]
-  create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
-  create-starter --list
-  create-starter --help
+  starter-series <name> --template <id> [options]
+  starter-series audit [path]
+  starter-series audit-cd [path]
+  starter-series audit-security [path]
+  starter-series audit-instructions [path]
+  starter-series proof-report [path] [--output <file>] [--stdout]
+  starter-series seed-security-guidance [path] [--force]
+  starter-series add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]
+  starter-series --list
+  starter-series --help
 
 Options
   -t, --template <id>      템플릿 ID (--list로 확인)
@@ -98,7 +102,7 @@ Environment
 | `cloudflare-pages` | Wrangler + Pages |
 | `docker-deploy` | 언어 무관 + GHCR + SSH |
 
-`create-starter --list` (CLI) 또는 `list_templates` (MCP)로 실시간 목록 확인.
+`starter-series --list` (CLI) 또는 `list_templates` (MCP)로 실시간 목록 확인.
 
 ## Lovable / Bolt / v0에서 졸업하기
 
@@ -170,13 +174,13 @@ git clone 경로를 그대로 지정하면 `skills/create/SKILL.md`나 `dist/ind
 
 ## MCP Registry로 사용
 
-이 서버는 [공식 MCP Registry](https://registry.modelcontextprotocol.io/)에 다음 네임스페이스로 게시됩니다:
+Registry 게시 후 이 서버는 [공식 MCP Registry](https://registry.modelcontextprotocol.io/)에서 다음 네임스페이스를 사용합니다:
 
 ```
 io.github.starter-series/create-starter
 ```
 
-Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동으로 지정하지 않고 이름만으로 설치할 수 있습니다. Registry 엔트리는 npm 패키지 `@starter-series/create`를 가리키므로, `npx`가 위에서 설명한 동일 stdio 서버를 실행합니다.
+Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동으로 지정하지 않고 이름만으로 설치할 수 있습니다. Registry 엔트리는 npm 패키지 `starter-series`를 가리키므로, registry 단계는 npm 패키지가 게시되고 검증된 뒤에만 진행합니다.
 
 소유권 검증: GitHub OIDC 네임스페이스 `io.github.starter-series/*` + npm tarball 검사 (`package.json#mcpName`). 게시 플로우는 [`.github/workflows/publish-mcp-registry.yml`](https://github.com/starter-series/create-starter/blob/main/.github/workflows/publish-mcp-registry.yml) 참고.
 
@@ -194,13 +198,13 @@ Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동
 
 감사 (각각 선택적 `path` 인자, 기본값 = MCP 서버 cwd; 모두 읽기 전용):
 
-- **`audit_release`** — 릴리스 준비 상태 진단. CLI 미러: `create-starter audit [path]`.
-- **`audit_cd`** — destination별 publish 드리프트 탐지. CLI 미러: `create-starter audit-cd [path]`.
-- **`audit_security`** — CI 보안 위생 베이스라인 점검. CLI 미러: `create-starter audit-security [path]`.
-- **`audit_instructions`** — agent instruction duplicate와 surface-overlap review, advisory keyword risk summary. CLI 미러: `create-starter audit-instructions [path]`.
-- **`generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 합친 Markdown 출시 인계 리포트. CLI 미러: `create-starter proof-report [path] [--output <file>] [--stdout]`.
-- **`seed_security_guidance`** — 감지된 Starter Series 템플릿에 맞는 `claude-security-guidance.md` 초안 생성. CLI 미러: `create-starter seed-security-guidance [path] [--force]`.
-- **`add_component`** — 기존 레포에 starter의 CI/CD component를 dry-run plan으로 제안하거나 적용. CLI 미러: `create-starter add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
+- **`audit_release`** — 릴리스 준비 상태 진단. CLI 미러: `starter-series audit [path]`.
+- **`audit_cd`** — destination별 publish 드리프트 탐지. CLI 미러: `starter-series audit-cd [path]`.
+- **`audit_security`** — CI 보안 위생 베이스라인 점검. CLI 미러: `starter-series audit-security [path]`.
+- **`audit_instructions`** — agent instruction duplicate와 surface-overlap review, advisory keyword risk summary. CLI 미러: `starter-series audit-instructions [path]`.
+- **`generate_launch_proof_report`** — release, CD, security, instruction-review 감사를 합친 Markdown 출시 인계 리포트. CLI 미러: `starter-series proof-report [path] [--output <file>] [--stdout]`.
+- **`seed_security_guidance`** — 감지된 Starter Series 템플릿에 맞는 `claude-security-guidance.md` 초안 생성. CLI 미러: `starter-series seed-security-guidance [path] [--force]`.
+- **`add_component`** — 기존 레포에 starter의 CI/CD component를 dry-run plan으로 제안하거나 적용. CLI 미러: `starter-series add-component [path] [--component <g>] [--starter <id>] [--apply] [--force]`.
 
 ## 안전성 & 신뢰성
 

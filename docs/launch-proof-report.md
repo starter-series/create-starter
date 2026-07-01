@@ -8,17 +8,17 @@ It is meant for the moment when an app already runs, but the owner needs evidenc
 
 | Gate | Source command | What it proves |
 | --- | --- | --- |
-| Release | `create-starter audit` | Version, changelog, matched starter, and publish workflow shape are coherent enough to ship. |
-| CD | `create-starter audit-cd` | Local package/app version is compared against public registries or release destinations when public read APIs exist. |
-| Security | `create-starter audit-security` | Baseline CI security hygiene is present: secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, and security-review workflow. |
-| Instructions | `create-starter audit-instructions` | Agent instruction files are checked for exact duplicate review findings and cross-file surface overlap. Keyword risk summaries are advisory only, not exhaustive safety or semantic drift detection. |
+| Release | `starter-series audit` | Version, changelog, matched starter, and publish workflow shape are coherent enough to ship. |
+| CD | `starter-series audit-cd` | Local package/app version is compared against public registries or release destinations when public read APIs exist. |
+| Security | `starter-series audit-security` | Baseline CI security hygiene is present: secret scanning, dependency audit, CodeQL, pinned gitleaks, license check, Dependabot, install-script guard, and security-review workflow. |
+| Instructions | `starter-series audit-instructions` | Agent instruction files are checked for exact duplicate review findings and cross-file surface overlap. Keyword risk summaries are advisory only, not exhaustive safety or semantic drift detection. |
 
 The report deliberately does not certify legal, store-review, privacy, or security-compliance status. It is a technical launch-readiness handoff.
 
 ## Run it
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo
+npx -y starter-series proof-report /path/to/repo
 ```
 
 By default the command writes:
@@ -30,13 +30,13 @@ By default the command writes:
 Use `--stdout` when another agent or CI step needs the Markdown directly:
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo --stdout
+npx -y starter-series proof-report /path/to/repo --stdout
 ```
 
 Use `--output` to put the report in a handoff folder:
 
 ```bash
-npx -y @starter-series/create proof-report /path/to/repo --output reports/launch-proof.md
+npx -y starter-series proof-report /path/to/repo --output reports/launch-proof.md
 ```
 
 `--output` is resolved inside the target repo. Paths that escape the repo are rejected.

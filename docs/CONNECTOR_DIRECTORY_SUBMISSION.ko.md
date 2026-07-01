@@ -17,13 +17,13 @@
 | **Category** | Developer Tools / Scaffolding |
 | **Author** | heznpc |
 | **License** | MIT |
-| **제출 시 버전** | 0.3.0 |
+| **제출 시 버전** | 0.4.0 |
 | **Homepage URL** | https://github.com/starter-series/create-starter#readme |
 | **Documentation URL** | https://github.com/starter-series/create-starter#readme |
 | **Source URL** | https://github.com/starter-series/create-starter |
 | **Issues / Support URL** | https://github.com/starter-series/create-starter/issues |
 | **Privacy policy URL** | https://github.com/starter-series/create-starter/blob/main/docs/PRIVACY.md *(TODO: 리뷰어 요청 시 별도 공개. 현재 입장은 "데이터 미수집"으로 본 문서 §3에 인라인)* |
-| **npm 패키지** | https://www.npmjs.com/package/@starter-series/create |
+| **npm 패키지** | 릴리스 대상: https://www.npmjs.com/package/starter-series (npm 게시 후 검증) |
 | **MCP Registry 엔트리** | `io.github.starter-series/create-starter` (https://registry.modelcontextprotocol.io/) |
 
 ### Short description (≤ 160자)
@@ -36,15 +36,15 @@
 >
 > It downloads the selected template tarball from GitHub, substitutes placeholders (project name, description), handles Python package renames (pyproject + `src/` directory), and runs `git init`. Inputs are Zod-validated before any filesystem write. Extraction happens in a sibling tmp directory and the final path only appears after an atomic `rename` — a failed scaffold never leaves half-written state. Downloads have a 30 s timeout, 3-attempt exponential backoff, and a 50 MB size cap. No credentials handled, no telemetry.
 >
-> One tool per action: `list_templates` enumerates templates, `create_project` scaffolds one. A bundled Claude Code skill (`skills/create/SKILL.md`) guides the conversation. Installs as Claude Code plugin, Claude Desktop `.mcpb`, or plain `npx`.
+> MCP 표면은 9개 도구를 노출합니다: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 번들된 Claude Code skill (`skills/create/SKILL.md`)이 대화 흐름을 안내합니다. Claude Code plugin, Claude Desktop `.mcpb`, 일반 `npx`로 설치할 수 있습니다.
 
 ### 채널별 설치 명령
 
 | 채널 | 명령 |
 |---|---|
-| Claude Desktop (.mcpb) | [최신 GitHub 릴리스](https://github.com/starter-series/create-starter/releases/latest)의 `create-starter-0.3.0.mcpb`를 Claude Desktop 설정 창에 드래그. |
+| Claude Desktop (.mcpb) | [최신 GitHub 릴리스](https://github.com/starter-series/create-starter/releases/latest)의 `create-starter-0.4.0.mcpb`를 Claude Desktop 설정 창에 드래그. |
 | Claude Code 플러그인 | `/plugin marketplace add starter-series/create-starter` 후 `/plugin install create-starter@starter-series` |
-| npm CLI | `npx @starter-series/create <name> --template <id>` |
+| npm CLI | npm 게시 후: `npx starter-series <name> --template <id>` |
 | MCP 서버 (수동) | 클라이언트 설정 JSON의 `mcpServers`에 `node /abs/path/dist/index.js` 등록. |
 | MCP Registry | `io.github.starter-series/create-starter` (registry discovery 지원 클라이언트) |
 
@@ -56,10 +56,10 @@
 |---|---|
 | **Transport** | `stdio` (로컬 전용). **remote endpoint / Streamable-HTTP 서버 없음.** |
 | **Authentication** | 없음. OAuth, API key, token 모두 없음. |
-| **노출 capabilities** | 툴 2개, Claude Code 스킬 1개. resources 없음, prompts 없음. |
-| **툴 목록** | `list_templates` (read-only), `create_project` (디스크 쓰기 수행) |
+| **노출 capabilities** | 툴 9개, Claude Code 스킬 1개. resources 없음, prompts 없음. |
+| **툴 목록** | `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component` |
 | **툴 어노테이션** | `list_templates` → `readOnlyHint: true`. `create_project` → `destructiveHint: false` (실패 시 전체 롤백되고 성공 시 atomic rename). |
-| **런타임** | Node.js ≥ 20, 크로스 플랫폼 (macOS / Linux / Windows). `.mcpb`에 `node_modules/`까지 번들. |
+| **런타임** | Node.js ≥ 22, 크로스 플랫폼 (macOS / Linux / Windows). `.mcpb`에 `node_modules/`까지 번들. |
 | **호출하는 호스트 바이너리** | `git` (선택; 없으면 stderr 경고만 남기고 scaffold 성공). 그 외 서브프로세스 없음. |
 | **네트워크 egress** | HTTPS GET `github.com/starter-series/<template>/archive/refs/heads/main.tar.gz` 만. 다른 호스트 없음. |
 | **파일시스템 쓰기** | 사용자 지정 `output_dir` 하위로만. 추출은 sibling `.<name>-incomplete-<rand>/`, 성공 시 atomic `rename`, 실패 시 재귀 `rm`. |
@@ -97,13 +97,13 @@
 사용자 로컬 디스크에 전부. 커넥터는 사용자 로컬 프로세스로 실행되며 파일은 사용자가 지정한 경로에 기록됩니다.
 
 **Q: 커넥터 업데이트 방식?**
-사용자가 선택한 채널로 직접 업데이트: `npm install -g @starter-series/create@latest`, 마켓플레이스에서 플러그인 재설치, 또는 새 `.mcpb`를 Claude Desktop에 드래그. 자동 업데이트 메커니즘이나 백그라운드 프로세스는 없습니다.
+npm 게시 후 사용자가 선택한 채널로 직접 업데이트: `npm install -g starter-series`, 마켓플레이스에서 플러그인 재설치, 또는 새 `.mcpb`를 Claude Desktop에 드래그. 자동 업데이트 메커니즘이나 백그라운드 프로세스는 없습니다.
 
 ---
 
 ## 4. 알려진 제한사항
 
-- **호스트 의존성.** Node.js ≥ 20 필수. `git`은 선택 — 없어도 scaffold 완료되지만 `.git` 디렉토리가 남지 않습니다.
+- **호스트 의존성.** Node.js ≥ 22 필수. `git`은 선택 — 없어도 scaffold 완료되지만 `.git` 디렉토리가 남지 않습니다.
 - **템플릿 `ref` pinning.** 기본 ref는 `main`. 각 scaffold는 그 시점의 템플릿 브랜치 tip을 받습니다. 스캐폴드별 버전 핀이 없으므로 며칠 간격의 두 scaffold 결과가 다를 수 있습니다 (템플릿을 항상 최신으로 유지하려는 의도적 설계).
 - **실행 샌드박스 없음.** 커넥터는 호스트 파일시스템 퍼미션을 신뢰합니다. 사용자가 자기 소유 `output_dir`를 주면 거기에 쓰고, 쓰기 권한 있는 시스템 경로를 주면 거기에도 씁니다. OS 이상의 추가 샌드박싱은 없습니다.
 - **GitHub 가용성.** 템플릿 다운로드는 `github.com` 도달성을 요구. GitHub을 차단하는 사내 프록시 환경에서는 retry 소진 후 네트워크 에러로 실패합니다.
@@ -130,10 +130,10 @@
 | 클라이언트 | 설치 경로 | 상태 |
 |---|---|---|
 | **Claude Code** | 플러그인 마켓플레이스 (`starter-series/create-starter`) | Tested — 플러그인이 MCP 서버 + `create` 스킬 번들. 주 개발 타겟. |
-| **Claude Desktop** | `.mcpb` 드래그 설치 | Tested — 매 GitHub 릴리스마다 `create-starter-0.3.0.mcpb` 첨부. |
+| **Claude Desktop** | `.mcpb` 드래그 설치 | Tested path — 릴리스 산출물은 `create-starter-<version>.mcpb`. |
 | **Cursor** | `mcpServers` JSON 수동 등록 | Untested end-to-end. 표준 stdio MCP 클라이언트이므로 동작 예상. |
 | **Windsurf** | `mcpServers` JSON 수동 등록 | Untested end-to-end. 표준 stdio MCP 클라이언트이므로 동작 예상. |
-| **MCP Registry 지원 클라이언트** | `io.github.starter-series/create-starter` | Registry 엔트리 활성. 서드파티 클라이언트에서의 클라이언트 측 discovery는 미검증. |
+| **MCP Registry 지원 클라이언트** | `io.github.starter-series/create-starter` | Registry 엔트리 대상. npm 패키지 게시 후 검증. 서드파티 클라이언트에서의 클라이언트 측 discovery는 미검증. |
 
 OS 커버리지: macOS (arm64, x64), Linux (x64), Windows (x64). `.github/workflows/ci.yml`의 GitHub Actions 매트릭스로 세 OS 모두 smoke test.
 
@@ -143,9 +143,9 @@ OS 커버리지: macOS (arm64, x64), Linux (x64), Windows (x64). `.github/workfl
 
 `https://claude.ai/settings/plugins/submit`에서 Submit 누르기 전에:
 
-- [ ] `v0.3.0` (또는 그 이상)이 npm의 **최신 버전**이다 (`npm view @starter-series/create version`).
+- [ ] `v0.4.0` (또는 그 이상)이 npm의 **최신 버전**이다 (`npm view starter-series version`).
 - [ ] `server.json` 버전이 npm 버전과 일치한다.
-- [ ] `io.github.starter-series/create-starter` MCP Registry 엔트리가 **정상 활성**이다.
+- [ ] `io.github.starter-series/create-starter` MCP Registry 엔트리가 **npm 게시 후 정상 활성**이다.
 - [ ] 최신 GitHub 릴리스에 `create-starter-<version>.mcpb`가 첨부되어 있고 Claude Desktop에 드래그 설치 후 `list_templates` 호출이 정상 동작한다.
 - [ ] `README.md`와 `docs/ko/README.md`가 제출 버전 내용을 반영한다.
 - [ ] `main`의 CI 그린 (`ci.yml`, `publish.yml`, `publish-mcp-registry.yml`).
@@ -156,7 +156,6 @@ OS 커버리지: macOS (arm64, x64), Linux (x64), Windows (x64). `.github/workfl
 - [ ] Homepage / Documentation / Source / Support URL 모두 HTTP 200.
 - [ ] long description의 템플릿 표가 제출 시점의 `list_templates` 출력과 일치.
 - [ ] 데모 영상 URL (선택, 캐러셀 불가. description / homepage에 링크 가능) — 예: `https://github.com/starter-series/create-starter#demo`의 30–60초 asciinema/GIF.
-- [ ] 메인테이너 이메일 (`wantcongz@gmail.com`) 모니터링 중.
 
 ---
 
@@ -217,11 +216,17 @@ Write: local filesystem writes under the user-supplied output_dir only.
 [Tool list]
 1. list_templates — read-only; returns the template catalog as JSON.
 2. create_project — writes; scaffolds a project from a selected template.
+3. audit_release — release-readiness diagnosis.
+4. audit_cd — per-destination publish-drift probe.
+5. audit_security — baseline CI security hygiene check.
+6. audit_instructions — agent-instruction duplicate and surface-overlap review.
+7. generate_launch_proof_report — combined launch handoff.
+8. seed_security_guidance — starter-aware security guidance draft.
+9. add_component — dry-run or apply starter CI/CD components to an existing repo.
 
 [Tool annotations confirmation]
-Both tools set `title` and the appropriate hint. list_templates → readOnlyHint=true.
-create_project → readOnlyHint=false; destructive operations confined to an atomic
-rename of a fresh sibling directory under the user-specified output_dir.
+Tools set `title` and the appropriate read/write hints. Write-capable tools are
+confined to explicit user-selected paths or dry-run output by default.
 
 [Third-party connections]
 GitHub only, for public template tarball download. No other external services.
@@ -239,7 +244,8 @@ No account required. Reviewer can install the .mcpb, call list_templates, then
 create_project with template=mcp-server, name=demo to produce a working scaffold.
 
 [GA date]
-2026-04-24 (v0.3.0 currently GA on npm and MCP Registry).
+2026-04-24 initial release; submit this dossier only after verifying the current
+`0.4.0` npm package metadata and MCP Registry entry are prepared; verify both are live after publication.
 
 [Surfaces tested]
 - Claude Code (plugin) — tested

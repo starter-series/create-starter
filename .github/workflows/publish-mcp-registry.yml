@@ -7,7 +7,7 @@ name: Publish to MCP Registry
 # to the `starter-series` GitHub org via GitHub OIDC — the registry verifies the
 # OIDC token's `repository_owner` claim matches the namespace after `io.github.`.
 #
-# Ownership of the npm package `@starter-series/create` is verified by the registry
+# Ownership of the npm package `starter-series` is verified by the registry
 # fetching the published tarball and asserting `package.json#mcpName` equals
 # `server.json#name`.
 #

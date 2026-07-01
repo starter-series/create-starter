@@ -88,7 +88,7 @@ describe("extractSemver — trailing version from prefixed/monorepo tags", () =>
 
   it("extracts from a scoped monorepo tag (@scope/x@1.2.3)", () => {
     assert.equal(extractSemver("@scope/pkg@1.2.3"), "1.2.3");
-    assert.equal(extractSemver("@starter-series/create@0.4.0"), "0.4.0");
+    assert.equal(extractSemver("starter-series@0.4.0"), "0.4.0");
   });
 
   it("extracts from a name-prefixed tag (pkg-name-v1.2.3, release-1.2.3)", () => {

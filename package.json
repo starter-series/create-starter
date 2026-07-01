@@ -1,10 +1,11 @@
 {
-  "name": "@starter-series/create",
+  "name": "starter-series",
   "version": "0.4.0",
   "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
   "bin": {
+    "starter-series": "dist/index.js",
     "create-starter": "dist/index.js"
   },
   "main": "dist/index.js",

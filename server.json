@@ -11,7 +11,7 @@
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@starter-series/create",
+      "identifier": "starter-series",
       "version": "0.4.0",
       "transport": {
         "type": "stdio"
