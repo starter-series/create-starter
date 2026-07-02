@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { isAbsolute, normalize } from "node:path";
+import { resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { extract } from "tar";
@@ -115,6 +115,10 @@ async function fetchOnce(args: FetchOnceArgs): Promise<Buffer> {
       if (done) break;
       total += value.byteLength;
       if (total > maxSizeBytes) {
+        // Tear down the underlying fetch/socket the same way the timeout path
+        // does, so the response body isn't left undrained (fd/socket leak) on
+        // this DoS-defense branch.
+        controller.abort();
         throw new DownloadError(
           `download exceeded limit ${maxSizeBytes} bytes`,
           "SIZE_EXCEEDED",
@@ -147,26 +151,41 @@ async function fetchOnce(args: FetchOnceArgs): Promise<Buffer> {
 /**
  * Reject tar entries that would escape `destDir` (zip-slip / path-traversal).
  *
- * `tar.extract`'s `strip: 1` peels the leading "<repo>-<sha>/" segment off
- * GitHub archives, so by the time `filter` sees a path it should be a
- * relative path inside the project. Anything else — absolute paths, paths
- * containing `..`, Windows drive letters — is a malicious or corrupt entry.
+ * node-tar invokes the user `filter` on the RAW entry path — BEFORE the
+ * `strip: 1` that peels the leading "<repo>-<sha>/" segment off GitHub
+ * archives is applied. So this guard must replicate `strip: 1` itself: it
+ * drops the first raw segment, then resolves the remainder against `destDir`
+ * and requires the result to stay strictly inside `destDir`. Doing so on the
+ * post-strip path is what node-tar will actually extract to, and resolving
+ * against `destDir` is robust regardless of `..`, absolute paths, or Windows
+ * drive letters.
+ *
+ * IMPORTANT: the first raw segment is dropped BEFORE any normalization —
+ * normalizing first would let `repo/../../escape` collapse to `../escape` and
+ * then falsely drop `..` as the "first segment".
  *
  * `tar.extract` also rejects symlinks/hardlinks that target outside cwd by
  * default; we keep that behavior and add an explicit path check on top.
  */
-export function isSafeTarEntry(path: string): boolean {
-  if (!path) return false;
-  if (isAbsolute(path)) return false;
-  // Reject Windows drive letters that look relative on POSIX (e.g. "C:foo").
-  if (/^[A-Za-z]:/.test(path)) return false;
-  // `normalize` collapses `a/../b` → `b`. If the result still starts with
-  // `..` it means the entry escapes cwd.
-  const normalized = normalize(path);
-  if (normalized.startsWith("..") || normalized.includes(`${"/"}..${"/"}`)) {
-    return false;
-  }
-  return true;
+export function isSafeTarEntry(rawPath: string, destDir: string): boolean {
+  if (!rawPath) return false;
+  // Replicate node-tar's `strip: 1` on the RAW path first (drop the leading
+  // "<repo>-<sha>/" segment).
+  const stripped = stripTopLevelTarSegment(rawPath);
+  // Entry was just the top-level directory itself — nothing to extract.
+  if (!stripped) return false;
+  // Resolve against destDir and require the result to stay strictly inside it.
+  // Using `resolvedDest + sep` (not a bare prefix) prevents a sibling like
+  // "/dest-evil" from matching "/dest".
+  const resolvedDest = resolve(destDir);
+  const target = resolve(resolvedDest, stripped);
+  return target === resolvedDest || target.startsWith(resolvedDest + sep);
+}
+
+function stripTopLevelTarSegment(rawPath: string): string {
+  const parts = rawPath.replace(/\\/g, "/").split("/");
+  parts.shift();
+  return parts.join("/");
 }
 
 export async function extractTarball(
@@ -183,7 +202,10 @@ export async function extractTarball(
       cwd: destDir,
       strip: 1,
       filter: (path) => {
-        if (!isSafeTarEntry(path)) {
+        if (!stripTopLevelTarSegment(path)) {
+          return false;
+        }
+        if (!isSafeTarEntry(path, destDir)) {
           // Capture the first offender so we can surface it in the error
           // instead of silently skipping (which is what `filter` does).
           rejected ??= path;

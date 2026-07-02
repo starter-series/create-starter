@@ -114,39 +114,50 @@ describe("fetchTarball", () => {
 });
 
 describe("isSafeTarEntry (zip-slip / path-traversal guard)", () => {
+  // node-tar invokes `filter` on the RAW entry path (before `strip: 1`), so
+  // every entry from a GitHub archive carries a leading "<repo>-<sha>/"
+  // segment. isSafeTarEntry replicates strip:1 itself, then checks the result
+  // stays inside destDir. Tests therefore use raw (pre-strip) paths + a destDir.
+  const destDir = "/tmp/create-starter-dest";
   const safe = [
-    "package.json",
-    "src/index.ts",
-    "deeply/nested/file.txt",
-    "with-dashes/and_underscores.md",
-    "trailing/slash/", // tar can emit directory entries
+    "repo-abc/package.json",
+    "repo-abc/src/index.ts",
+    "repo-abc/deeply/nested/file.txt",
+    "repo-abc/with-dashes/and_underscores.md",
+    "repo-abc/trailing/slash/", // tar can emit directory entries
   ];
   const unsafe = [
     "",
-    "/etc/passwd",
-    "/absolute/path",
-    "../escape",
-    "ok/then/../../../escape", // collapses to ../escape — escapes cwd
-    "C:windows", // Windows drive letter
-    "C:\\Users\\Public",
-    "..",
-    "../",
-    "../../",
+    "repo-abc/../escape.txt", // after strip:1 → ../escape.txt — escapes destDir
+    "repo-abc/../../escape.txt", // after strip:1 → ../../escape.txt
+    "repo-abc/ok/then/../../../escape", // after strip:1 collapses to ../escape
+    "repo-abc", // top-level dir only — nothing to extract after strip
+    "repo-abc/", // ditto
+    "repo-abc/..",
+    "repo-abc/../",
   ];
 
-  it("accepts paths that resolve back inside cwd even with .. mid-path", () => {
-    // `ok/then/../../escape` → `escape` (still inside cwd) — safe.
-    assert.equal(isSafeTarEntry("ok/then/../../escape"), true);
+  it("accepts raw paths that resolve back inside destDir even with .. mid-path", () => {
+    // `repo-abc/ok/then/../../escape` → strip → `ok/then/../../escape`
+    // → resolves to `escape` (still inside destDir) — safe.
+    assert.equal(isSafeTarEntry("repo-abc/ok/then/../../escape", destDir), true);
+  });
+
+  it("strips the RAW first segment before normalizing (double-.. escape)", () => {
+    // If it normalized first, `repo-abc/../../escape` would collapse to
+    // `../escape`, then dropping `..` as the "first segment" would falsely
+    // accept `escape`. Stripping the raw segment first correctly rejects it.
+    assert.equal(isSafeTarEntry("repo-abc/../../escape", destDir), false);
   });
 
   for (const p of safe) {
     it(`accepts ${JSON.stringify(p)}`, () => {
-      assert.equal(isSafeTarEntry(p), true);
+      assert.equal(isSafeTarEntry(p, destDir), true);
     });
   }
   for (const p of unsafe) {
     it(`rejects ${JSON.stringify(p)}`, () => {
-      assert.equal(isSafeTarEntry(p), false);
+      assert.equal(isSafeTarEntry(p, destDir), false);
     });
   }
 });
