@@ -73,7 +73,10 @@ jobs:
 
       - name: Check licenses
         if: matrix.node-version == 22
-        run: npx --yes license-checker --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
+        # Pin the top-level package version instead of resolving "latest" at CI
+        # time, matching the SHA/version-pinning discipline used for gitleaks and
+        # actions elsewhere in this template. Bump this alongside other deps.
+        run: npx --yes license-checker@25.0.1 --failOn "GPL-2.0;GPL-3.0;AGPL-3.0"
 
       - name: Verify EN/KO docs heading parity
         if: matrix.node-version == 22

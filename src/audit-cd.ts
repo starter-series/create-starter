@@ -441,7 +441,15 @@ function probeGithubReleases(
     const out = execFileSync(
       "gh",
       ["release", "view", "--json", "tagName,publishedAt", "-R", id],
-      { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "pipe"],
+        // Bound the outbound GitHub API call so a slow/unreachable host or a
+        // gh auth prompt can't hang the single-process MCP server. On timeout
+        // execFileSync throws and the catch below degrades to an error status.
+        timeout: 10_000,
+        killSignal: "SIGKILL",
+      },
     );
     const data = JSON.parse(out) as { tagName?: string; publishedAt?: string };
     const tag = data.tagName ?? null;

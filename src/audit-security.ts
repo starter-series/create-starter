@@ -251,7 +251,15 @@ function checkSecretScanning(
       const out = execFileSync(
         "gh",
         ["api", `repos/${remote}`, "--jq", ".security_and_analysis.secret_scanning.status // \"\""],
-        { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
+        {
+          encoding: "utf-8",
+          stdio: ["ignore", "pipe", "pipe"],
+          // Bound the outbound GitHub API call so a slow/unreachable host or a
+          // gh auth prompt can't hang the single-process MCP server. On timeout
+          // execFileSync throws and the catch below falls through gracefully.
+          timeout: 10_000,
+          killSignal: "SIGKILL",
+        },
       ).trim();
       if (out === "enabled") {
         return {
