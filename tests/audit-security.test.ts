@@ -312,3 +312,194 @@ describe("auditSecurity — formatting", () => {
     }
   });
 });
+
+describe("auditSecurity — resolves npm script indirection", () => {
+  it("credits license-check invoked via `npm run license:check`", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({
+          name: "x",
+          version: "1.0.0",
+          scripts: { "license:check": "node scripts/check-licenses.mjs" },
+        }),
+      );
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+name: ci
+jobs:
+  ci:
+    steps:
+      - run: npm ci --ignore-scripts
+      - name: Check licenses
+        run: npm run license:check
+`,
+      );
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((x) => x.name === "license-check")!;
+      assert.equal(c.status, "present");
+      assert.deepEqual(c.evidence, ["ci.yml"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not credit license-check for a bare step name with no tool", async () => {
+    const dir = makeRepo();
+    try {
+      // Needs a real dependency so license-check stays applicable — otherwise
+      // the empty-graph rule grades it not-applicable and this assertion would
+      // pass for the wrong reason.
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "1.0.0", dependencies: { left_pad: "^1.0.0" } }),
+      );
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+name: ci
+jobs:
+  ci:
+    steps:
+      - name: Check licenses
+        run: echo todo
+`,
+      );
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((x) => x.name === "license-check")!;
+      assert.equal(c.status, "missing");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not expand a script name that is not defined in package.json", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "1.0.0", scripts: { build: "tsc" } }),
+      );
+      writeWorkflow(dir, "ci.yml", "jobs:\n  ci:\n    steps:\n      - run: npm run audit:deps\n");
+      const r = await auditSecurity(dir);
+      assert.equal(r.checks.find((x) => x.name === "dep-audit")!.status, "missing");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("auditSecurity — container scanners grade as partial dep-audit", () => {
+  it("grades a SHA-pinned trivy image scan as partial, not missing", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+name: ci
+jobs:
+  ci:
+    steps:
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: app:test
+          exit-code: '1'
+          severity: CRITICAL
+`,
+      );
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((x) => x.name === "dep-audit")!;
+      assert.equal(c.status, "partial");
+      assert.deepEqual(c.evidence, ["ci.yml"]);
+      assert.match(c.recommendation ?? "", /miss dev dependencies/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("still prefers present when a source-level audit is also inlined", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
+      writeWorkflow(
+        dir,
+        "ci.yml",
+        `
+jobs:
+  ci:
+    steps:
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+      - run: npm audit --audit-level=high
+`,
+      );
+      const r = await auditSecurity(dir);
+      assert.equal(r.checks.find((x) => x.name === "dep-audit")!.status, "present");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("auditSecurity — license-check on an empty dependency graph", () => {
+  it("grades not-applicable when no dependencies are declared", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "0.0.0", private: true, scripts: { test: "node --test" } }),
+      );
+      writeFileSync(
+        join(dir, "package-lock.json"),
+        JSON.stringify({ name: "x", lockfileVersion: 3, packages: { "": { name: "x" } } }),
+      );
+      writeWorkflow(dir, "ci.yml", "jobs:\n  ci:\n    steps:\n      - run: docker build .\n");
+      const r = await auditSecurity(dir);
+      const c = r.checks.find((x) => x.name === "license-check")!;
+      assert.equal(c.status, "not-applicable");
+      assert.equal(c.recommendation, undefined);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reverts to missing as soon as a real dependency is declared", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(
+        join(dir, "package.json"),
+        JSON.stringify({ name: "x", version: "0.0.0", dependencies: { left_pad: "^1.0.0" } }),
+      );
+      writeWorkflow(dir, "ci.yml", "jobs:\n  ci:\n    steps:\n      - run: npm ci --ignore-scripts\n");
+      const r = await auditSecurity(dir);
+      assert.equal(r.checks.find((x) => x.name === "license-check")!.status, "missing");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reverts to missing when the lockfile carries installed packages", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "0.0.0" }));
+      writeFileSync(
+        join(dir, "package-lock.json"),
+        JSON.stringify({
+          name: "x",
+          lockfileVersion: 3,
+          packages: { "": { name: "x" }, "node_modules/eslint": { version: "10.0.0" } },
+        }),
+      );
+      writeWorkflow(dir, "ci.yml", "jobs:\n  ci:\n    steps:\n      - run: npm ci --ignore-scripts\n");
+      const r = await auditSecurity(dir);
+      assert.equal(r.checks.find((x) => x.name === "license-check")!.status, "missing");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

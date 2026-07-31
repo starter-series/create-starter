@@ -55,6 +55,51 @@ function listWorkflows(repoPath: string): { file: string; content: string }[] {
   return out;
 }
 
+/**
+ * Read `scripts` from the repo's root package.json, if any.
+ *
+ * Used to resolve `npm run <name>` indirection before pattern matching. A
+ * workflow that runs `npm run license:check` is running whatever that script
+ * points at, and a detector that only scans workflow YAML cannot see it.
+ */
+function readPackageScripts(repoPath: string): Record<string, string> {
+  const raw = safeReadText(join(repoPath, "package.json"));
+  if (!raw) return {};
+  try {
+    const scripts = (JSON.parse(raw) as { scripts?: unknown }).scripts;
+    if (!scripts || typeof scripts !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(scripts as Record<string, unknown>)) {
+      if (typeof v === "string") out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Append the body of every referenced npm script to the workflow text so
+ * substring detectors see through one level of `npm run` indirection.
+ *
+ * Single pass by design: it is enough for the real case (a workflow step
+ * calling a script that invokes the tool) and cannot recurse infinitely on
+ * self-referential or mutually-referential scripts. The original text is
+ * preserved — bodies are appended, never substituted — so patterns that match
+ * the literal step keep matching.
+ */
+function expandRunScripts(content: string, scripts: Record<string, string>): string {
+  if (Object.keys(scripts).length === 0) return content;
+  const referenced = new Set<string>();
+  for (const m of content.matchAll(/(?:npm|pnpm|yarn)\s+run\s+([\w:.\-/]+)/gi)) {
+    const name = m[1];
+    if (name && scripts[name] !== undefined) referenced.add(name);
+  }
+  if (referenced.size === 0) return content;
+  const bodies = [...referenced].map((n) => `# expanded from "${n}": ${scripts[n]}`);
+  return `${content}\n${bodies.join("\n")}\n`;
+}
+
 function detectEcosystem(repoPath: string): AuditSecurityReport["ecosystem"] {
   const hasJs = existsSync(join(repoPath, "package.json"));
   const hasPy = existsSync(join(repoPath, "pyproject.toml")) ||
@@ -127,25 +172,97 @@ function checkDepAudit(
     /pip-audit/i,
     /safety\s+check/i,
   ];
+  // Container/filesystem scanners audit the dependency set baked into a built
+  // image rather than a lockfile. That is real dependency coverage — and for a
+  // repo whose deliverable is an image it is the language-appropriate kind —
+  // but it is weaker than a source-level audit: dev dependencies are absent
+  // from the runtime image, and typical configs gate on CRITICAL only and drop
+  // unfixed CVEs. Graded `partial`, never `present`.
+  const imageScanners = [
+    /aquasecurity\/trivy-action|\btrivy\s+(?:image|fs|rootfs|repo)\b/i,
+    /anchore\/scan-action|\bgrype\b/i,
+    /google\/osv-scanner|\bosv-scanner\b/i,
+    /snyk\/actions|\bsnyk\s+(?:test|container)\b/i,
+  ];
   const hits = workflows.filter((w) => patterns.some((p) => p.test(w.content)));
-  if (hits.length === 0) {
+  if (hits.length > 0) {
+    return { name: "dep-audit", status: "present", evidence: hits.map((w) => w.file) };
+  }
+  const scanHits = workflows.filter((w) => imageScanners.some((p) => p.test(w.content)));
+  if (scanHits.length > 0) {
     return {
       name: "dep-audit",
-      status: "missing",
-      evidence: [],
-      recommendation: ecosystem === "python"
-        ? "Add `pip-audit` step to a CI workflow"
-        : "Add `npm audit --audit-level=high` step to a CI workflow",
+      status: "partial",
+      evidence: scanHits.map((w) => w.file),
+      recommendation:
+        "Image/filesystem scan found but no source-level dependency audit. If this repo has its own dependency manifest, add " +
+        (ecosystem === "python" ? "`pip-audit`" : "`npm audit --audit-level=high`") +
+        " — image scans miss dev dependencies and commonly ignore unfixed CVEs.",
     };
   }
-  return { name: "dep-audit", status: "present", evidence: hits.map((w) => w.file) };
+  return {
+    name: "dep-audit",
+    status: "missing",
+    evidence: [],
+    recommendation: ecosystem === "python"
+      ? "Add `pip-audit` step to a CI workflow"
+      : "Add `npm audit --audit-level=high` step to a CI workflow",
+  };
 }
 
-function checkLicense(workflows: { file: string; content: string }[]): SecurityCheckResult {
+/**
+ * True when the repo provably has no third-party dependency graph: no declared
+ * dependencies/devDependencies, and a lockfile (if present) with no entries
+ * besides the root package.
+ *
+ * A license gate over an empty graph cannot find anything, and installing a
+ * license scanner to check zero packages would *add* the repo's only
+ * third-party download. Such repos are graded not-applicable rather than
+ * missing, and flip to missing as soon as a real dependency lands.
+ */
+function hasEmptyDependencyGraph(repoPath: string): boolean {
+  const pkgRaw = safeReadText(join(repoPath, "package.json"));
+  if (!pkgRaw) return false;
+  try {
+    const pkg = JSON.parse(pkgRaw) as Record<string, unknown>;
+    const count = (key: string) => Object.keys((pkg[key] as object) ?? {}).length;
+    if (count("dependencies") > 0 || count("devDependencies") > 0) return false;
+    if (count("peerDependencies") > 0 || count("optionalDependencies") > 0) return false;
+  } catch {
+    return false;
+  }
+  const lockRaw = safeReadText(join(repoPath, "package-lock.json"));
+  if (!lockRaw) return true;
+  try {
+    const packages = (JSON.parse(lockRaw) as { packages?: Record<string, unknown> }).packages ?? {};
+    // The root package is keyed "" — any other key is an installed dependency.
+    return Object.keys(packages).filter((k) => k !== "").length === 0;
+  } catch {
+    return false;
+  }
+}
+
+function checkLicense(
+  workflows: { file: string; content: string }[],
+  repoPath: string,
+): SecurityCheckResult {
+  // Covers the tool names (`license-checker`, `pip-licenses`, FOSSA, REUSE) and
+  // the common script-name family (`license:check`, `license-check`,
+  // `check-licenses`). Separators are required, so prose like a "Check
+  // licenses" step name does not by itself earn credit — the match has to come
+  // from a command or from an npm script body resolved by expandRunScripts.
   const hits = workflows.filter((w) =>
-    /license[-_]?checker|fossas?\/fossa|reuse[-_]?lint|pip-licenses/i.test(w.content),
+    /license[-_]?checker|fossas?\/fossa|reuse[-_]?lint|pip-licenses|licenses?[-_:]check|check[-_]licenses?/i
+      .test(w.content),
   );
   if (hits.length === 0) {
+    if (hasEmptyDependencyGraph(repoPath)) {
+      return {
+        name: "license-check",
+        status: "not-applicable",
+        evidence: ["no third-party dependencies declared"],
+      };
+    }
     return {
       name: "license-check",
       status: "missing",
@@ -373,11 +490,21 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
   const ecosystem = detectEcosystem(abs);
   const workflows = listWorkflows(abs);
 
+  // Only the tool-invocation detectors get `npm run` indirection resolved.
+  // Scoped deliberately: gitleaks/codeql/ignore-scripts assert on how the
+  // workflow itself is written (pinning, install flags), so expanding script
+  // bodies into their input could credit or fault the wrong file.
+  const scripts = readPackageScripts(abs);
+  const expanded = workflows.map((w) => ({
+    file: w.file,
+    content: expandRunScripts(w.content, scripts),
+  }));
+
   const checks: SecurityCheckResult[] = [
     checkGitleaks(workflows),
     checkCodeQL(workflows),
-    checkDepAudit(workflows, ecosystem),
-    checkLicense(workflows),
+    checkDepAudit(expanded, ecosystem),
+    checkLicense(expanded, abs),
     checkIgnoreScripts(workflows, ecosystem),
     checkDependabot(abs),
     checkSecretScanning(workflows, abs),
