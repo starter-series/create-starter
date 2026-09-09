@@ -123,6 +123,11 @@ export function parseCliArgs(argv: string[]): Parsed {
   return { positionals, values } as Parsed;
 }
 
+function optionValue(arg: string, next: string | undefined): string | undefined {
+  const value = arg.includes("=") ? arg.slice(arg.indexOf("=") + 1) : next;
+  return !value || (!arg.includes("=") && value.startsWith("-")) ? undefined : value;
+}
+
 function printTemplates(): void {
   const rows = templates.map((t) => ({
     id: t.id,
@@ -170,7 +175,8 @@ function partitionSubcommandArgs(
   const flags = new Set<string>();
   for (const a of argv) {
     if (a.startsWith("-")) {
-      // Support `--flag=value` form by checking the flag name before `=`.
+      // Boolean options must not turn an explicit false value into consent.
+      if (a.includes("=")) return { error: `boolean option does not accept a value: ${a}` };
       const flagName = a.split("=", 1)[0];
       if (!allowedFlags.has(flagName)) {
         return { error: `unknown option '${a}'` };
@@ -282,11 +288,13 @@ async function runAddComponentSubcommand(argv: string[]): Promise<number> {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const valueOf = (name: string): string | undefined =>
-      a.includes("=") ? a.slice(a.indexOf("=") + 1) : argv[++i];
+      optionValue(a, a.includes("=") ? undefined : argv[++i]);
     if (a === "--component" || a.startsWith("--component=") || a === "-c") {
       component = valueOf("--component");
+      if (component === undefined) { process.stderr.write("error: missing value for --component\n"); return EXIT_OP_FAILURE; }
     } else if (a === "--starter" || a.startsWith("--starter=") || a === "-s") {
       starter = valueOf("--starter");
+      if (starter === undefined) { process.stderr.write("error: missing value for --starter\n"); return EXIT_OP_FAILURE; }
     } else if (a === "--apply") {
       apply = true;
     } else if (a === "--force" || a === "-f") {
@@ -339,9 +347,10 @@ async function runProofReportSubcommand(argv: string[]): Promise<number> {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const valueOf = (): string | undefined =>
-      a.includes("=") ? a.slice(a.indexOf("=") + 1) : argv[++i];
+      optionValue(a, a.includes("=") ? undefined : argv[++i]);
     if (a === "--output" || a.startsWith("--output=") || a === "-o") {
       output = valueOf();
+      if (output === undefined) { process.stderr.write("error: missing value for --output\n"); return EXIT_OP_FAILURE; }
     } else if (a === "--stdout") {
       stdout = true;
     } else if (a.startsWith("-")) {

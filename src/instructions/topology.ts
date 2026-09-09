@@ -1,3 +1,4 @@
+import { stripFencedCode } from "./markdown.js";
 import { dirname, relative, resolve, sep } from "node:path";
 import type { InstructionDocument } from "./scan.js";
 const SOURCES_SCHEMA_VERSION = 1;
@@ -43,25 +44,9 @@ function displayPath(path: string, root: string): string {
 }
 
 function stripCodeRegions(text: string): string {
-  const lines: string[] = [];
-  let fenceMarker: string | null = null;
-  for (const line of text.split(/\r?\n/u)) {
-    const fence = /^\s*(`{3,}|~{3,})/u.exec(line);
-    if (fenceMarker) {
-      if (fence?.[1] && fence[1].startsWith(fenceMarker[0] ?? "") && fence[1].length >= fenceMarker.length) fenceMarker = null;
-      lines.push("");
-      continue;
-    }
-    if (fence?.[1]) {
-      fenceMarker = fence[1];
-      lines.push("");
-      continue;
-    }
-    lines.push(line);
-  }
   // Replace inline code spans with a non-whitespace placeholder so a stripped
   // span cannot fabricate the whitespace boundary the import syntax requires.
-  return lines.join("\n").replace(/``[^\n]*?``|`[^`\n]*`/gu, "\u0000");
+  return stripFencedCode(text).replace(/``[^\n]*?``|`[^`\n]*`/gu, "\u0000");
 }
 
 function importReferences(text: string, filePath: string, root: string, scannedPaths: Set<string>): SourceImportReference[] {

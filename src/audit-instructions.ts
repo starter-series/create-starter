@@ -1,3 +1,4 @@
+import { stripFencedCode } from "./instructions/markdown.js";
 import { scanInstructions, type InstructionDocument } from "./instructions/scan.js";
 import { analyzeInstructionSources, type SourceReport } from "./instructions/topology.js";
 import { reviewInstructions, loadInstructionConfig, type InstructionReview, type InstructionOptions } from "./instructions/review.js";
@@ -203,7 +204,6 @@ function extractSegments(source: string): Segment[] {
   let paragraphStart = 1;
   let listItem: string[] = [];
   let listItemStart = 1;
-  let inFence = false;
 
   const flushParagraph = (): void => {
     if (paragraph.length === 0) return;
@@ -222,19 +222,13 @@ function extractSegments(source: string): Segment[] {
     flushListItem();
   };
 
-  const lines = source.split(/\r?\n/u);
+  const lines = stripFencedCode(source).split(/\r?\n/u);
   for (let index = 0; index < lines.length; index += 1) {
     const lineNumber = index + 1;
     const line = lines[index] ?? "";
     const stripped = line.trim();
     const isListMarker = /^\s{0,4}(?:[-*+]|\d+[.)])\s+/u.test(line);
 
-    if (/^(```|~~~)/u.test(stripped)) {
-      flush();
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) continue;
     if (stripped.length === 0 || stripped.startsWith("#") || stripped.startsWith(">")) {
       flush();
       continue;
