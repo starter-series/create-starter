@@ -27,6 +27,7 @@ Usage
   starter-series audit [path]
   starter-series audit-cd [path]
   starter-series audit-security [path]
+  starter-series check [path] [--instructions] [--json] [--update-state]
   starter-series audit-instructions [path]
   starter-series proof-report [path] [--output <file>] [--stdout]
   starter-series seed-security-guidance [path] [--force]
@@ -41,7 +42,11 @@ Arguments
                            VS Marketplace, GitHub Releases) for publish drift
   audit-security [path]    Audit CI security hygiene (gitleaks, CodeQL, audit,
                            --ignore-scripts, Dependabot, etc.)
-  audit-instructions [path]
+  check [path]             Run release, CD, security and instruction checks.
+    --instructions         Run only instruction checks (read-only by default).
+    --json                 Print structured output, including decision evidence.
+    --update-state         Save instruction delta baseline; requires --instructions.
+  audit-instructions [path] (compatible alias for check --instructions)
                            Audit agent instruction files for exact same-file
                            duplicates, cross-file surface overlap, and
                            advisory keyword risk summaries. Read-only; not
@@ -375,7 +380,31 @@ async function runProofReportSubcommand(argv: string[]): Promise<number> {
   }
 }
 
+async function runCheck(argv: string[], instructionsOnly = false): Promise<number> {
+  if (argv.includes('--help') || argv.includes('-h')) { process.stdout.write(HELP); return EXIT_OK; }
+  const parsed=partitionSubcommandArgs(argv,new Set(['--instructions','--json','--update-state']));
+  if ('error' in parsed || argv.some(a=>a.startsWith('--')&&a.includes('='))) {
+    process.stderr.write(`error: ${'error' in parsed ? parsed.error : 'boolean flags do not accept values'}\n`);return EXIT_OP_FAILURE;
+  }
+  if (parsed.positionals.length>1) {process.stderr.write('error: check accepts at most one path\n');return EXIT_OP_FAILURE;}
+  const only=instructionsOnly||parsed.flags.has('--instructions');
+  if (!only && parsed.flags.has('--update-state')) {process.stderr.write('error: --update-state requires --instructions\n');return EXIT_OP_FAILURE;}
+  const path=parsed.positionals[0]??process.cwd();
+  try {
+    const instructions=await auditInstructions(path,{updateState:parsed.flags.has('--update-state')});
+    if(only){
+      process.stdout.write(parsed.flags.has('--json')?JSON.stringify(instructions,null,2)+'\n':formatAuditInstructionsReport(instructions));
+      return instructions.overall.verdict==='attention'?EXIT_RESULT_FAILURE:EXIT_OK;
+    }
+    const [release,cd,security]=await Promise.all([auditRelease(path),auditCd(path),auditSecurity(path)]);
+    process.stdout.write(parsed.flags.has('--json')?JSON.stringify({release,cd,security,instructions},null,2)+'\n':
+      formatAuditReport(release)+formatAuditCdReport(cd)+formatAuditSecurityReport(security)+formatAuditInstructionsReport(instructions));
+    return release.shipReady.verdict==='no'||cd.overall.verdict==='needs-publish'||security.overall.verdict==='soft'||instructions.overall.verdict==='attention'?EXIT_RESULT_FAILURE:EXIT_OK;
+  } catch(error){process.stderr.write(`error: ${(error as Error).message}\n`);return EXIT_OP_FAILURE;}
+}
+
 export async function runCli(argv: string[]): Promise<number> {
+  if (argv[0] === "check") return runCheck(argv.slice(1));
   if (argv[0] === "audit") {
     return runAuditSubcommand(
       argv.slice(1),
@@ -403,15 +432,7 @@ export async function runCli(argv: string[]): Promise<number> {
       (r) => r.overall.verdict === "soft",
     );
   }
-  if (argv[0] === "audit-instructions") {
-    return runAuditSubcommand(
-      argv.slice(1),
-      "audit-instructions",
-      auditInstructions,
-      formatAuditInstructionsReport,
-      (r) => r.overall.verdict === "attention",
-    );
-  }
+  if (argv[0] === "audit-instructions") return runCheck(argv.slice(1), true);
   if (argv[0] === "seed-security-guidance") {
     return runSeedSecurityGuidance(argv.slice(1));
   }

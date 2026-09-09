@@ -126,7 +126,7 @@ function mergeFindings(
   warnings.push(...instructions.overall.warnings.map((w) => `instructions: ${w}`));
   if (instructions.overall.verdict === "attention") {
     warnings.push(
-      `instructions: ${instructions.duplicates.length} duplicate candidate(s) and ${instructions.surfaceOverlaps.length} surface overlap(s) need review`,
+      `instructions: ${instructions.review.findings.filter(f => f.decision !== "accepted").length} pending/stale finding(s), including ${instructions.duplicates.length} duplicate candidate(s), ${instructions.surfaceOverlaps.length} surface overlap(s) and ${instructions.topology.warnings.length} topology warning(s), need review`,
     );
   } else if (instructions.overall.verdict === "advisory") {
     warnings.push(`instructions: ${instructions.riskSummaries.length} advisory keyword risk summary item(s)`);
@@ -257,7 +257,7 @@ export async function generateLaunchProofReport(
       name: "instructions",
       status: statusFromInstructions(instructions),
       verdict: instructions.overall.verdict,
-      detail: `${instructions.duplicates.length} duplicate(s), ${instructions.surfaceOverlaps.length} overlap(s), ${instructions.riskSummaries.length} advisory risk summary item(s)`,
+      detail: `${instructions.review.findings.filter(f => f.decision !== "accepted").length} pending/stale instruction finding(s), ${instructions.duplicates.length} duplicate(s), ${instructions.surfaceOverlaps.length} overlap(s), ${instructions.riskSummaries.length} advisory risk summary item(s)`,
     },
   ];
   const verdict = classifyOverall(gates);
