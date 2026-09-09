@@ -1,4 +1,4 @@
-import { existsSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, openSync, constants, existsSync, lstatSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { extractStarterSignals, type StarterId } from "./starter-detect.js";
 
@@ -152,6 +152,9 @@ export function seedSecurityGuidance(
   }
 
   const filePath = join(abs, "claude-security-guidance.md");
+  if (lstatSync(filePath, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    throw new Error(`Guidance output must not be a symlink: ${filePath}`);
+  }
   const exists = existsSync(filePath);
 
   // Detect the starter up front so the "exists" branch can report which starter
@@ -171,7 +174,13 @@ export function seedSecurityGuidance(
   }
 
   const content = buildContent(sig.id);
-  writeFileSync(filePath, content, "utf-8");
+  const fd = openSync(filePath, constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW |
+    (options.force ? constants.O_TRUNC : constants.O_EXCL));
+  try {
+    writeFileSync(fd, content, "utf-8");
+  } finally {
+    closeSync(fd);
+  }
 
   return {
     repoPath: abs,
