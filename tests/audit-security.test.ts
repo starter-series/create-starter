@@ -57,7 +57,7 @@ jobs:
     const dir = makeRepo();
     try {
       writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x", version: "1.0.0" }));
-      writeWorkflow(dir, "ci.yml", "uses: gitleaks/gitleaks-action@v2\n");
+      writeWorkflow(dir, "ci.yml", "jobs:\n  security:\n    steps:\n    - uses: gitleaks/gitleaks-action@v2\n");
       const r = await auditSecurity(dir);
       const g = r.checks.find((c) => c.name === "gitleaks")!;
       assert.equal(g.status, "partial");
@@ -310,5 +310,21 @@ describe("auditSecurity — formatting", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("auditSecurity — unresolved reusable policies", () => {
+  it("reports unverified policy instead of recommending duplicate local gates", async () => {
+    const dir = makeRepo();
+    try {
+      writeFileSync(join(dir, "package.json"), '{"name":"fixture"}');
+      writeWorkflow(dir, "ci.yml", "jobs:\n  checks:\n    uses: example/policy/.github/workflows/ci.yml@main\n");
+      const report = await auditSecurity(dir);
+      assert.notEqual(report.overall.verdict, "hardened");
+      const check = report.checks.find(c => c.name === "dep-audit")!;
+      assert.equal(check.status, "partial");
+      assert.match(check.evidence.join("\n"), /Unverified policy/);
+      assert.match(check.recommendation!, /do not duplicate central policy locally/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

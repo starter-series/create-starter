@@ -1,3 +1,4 @@
+import { expandSecurityWorkflows } from "./security-workflows.js";
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
@@ -371,7 +372,7 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
   }
 
   const ecosystem = detectEcosystem(abs);
-  const workflows = listWorkflows(abs);
+  const { sources: workflows, unresolved } = await expandSecurityWorkflows(listWorkflows(abs));
 
   const checks: SecurityCheckResult[] = [
     checkGitleaks(workflows),
@@ -384,6 +385,14 @@ export async function auditSecurity(repoPath: string): Promise<AuditSecurityRepo
     checkClaudeCodeSecurityReview(workflows),
     checkClaudeSecurityGuidance(abs),
   ];
+
+  if (unresolved.length) {
+    for (const check of checks.filter(c => ["gitleaks", "codeql", "dep-audit", "license-check", "ignore-scripts"].includes(c.name) && c.status !== "not-applicable")) {
+      check.status = "partial";
+      check.evidence.push(...unresolved.map(detail => `Unverified policy: ${detail}`));
+      check.recommendation = "Resolve the referenced workflow before treating this policy check as verified; do not duplicate central policy locally.";
+    }
+  }
 
   const summary = {
     present: checks.filter((c) => c.status === "present").length,

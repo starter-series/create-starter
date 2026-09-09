@@ -6,6 +6,9 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 [English README](../../README.md)
 
+보안 검사는 로컬 workflow와 참조된 `starter-series/.github` 정책의 composite action 및 호출 script를 읽습니다. 근거에 경로와 내용 해시를 표시하며, 읽지 못하거나 지원하지 않는 reusable workflow는 미검증으로 표시합니다. 최신 Actions 실행 결과나 실시간 취약점 스캔을 대신하지 않습니다.
+
+
 ## Currently implemented (현재 구현된 것)
 
 - **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. `npx starter-series my-bot --template discord-bot`로 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
