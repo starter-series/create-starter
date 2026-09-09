@@ -64,11 +64,6 @@ jobs:
           # version mismatch (e.g., Claude Desktop ext manager vs npm). Gate
           # publish on parity.
           PKG_VERSION="${{ steps.pkg.outputs.version }}"
-          declare -A FILES=(
-            [server.json]="server.json"
-            [manifest.json]="manifest.json"
-            [.claude-plugin/plugin.json]=".claude-plugin/plugin.json"
-          )
           for path in server.json manifest.json .claude-plugin/plugin.json; do
             if [ ! -f "$path" ]; then
               echo "::error::$path not found at repo root"
@@ -101,6 +96,9 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Install npm with Trusted Publishing support
+        run: npm install --global npm@11.19.1 --ignore-scripts
+
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
@@ -120,7 +118,28 @@ jobs:
 
       - name: npm publish
         if: github.event_name == 'push' || inputs.dry_run == false
-        run: npm publish --access public
+        run: |
+          # The first version is bootstrapped with npm login before OIDC can
+          # be configured. Resume its release only if the bytes match exactly.
+          node --input-type=module <<'JS'
+          import { spawnSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const run = args => spawnSync('npm', args, { encoding: 'utf8' });
+          const packed = run(['pack', '--json']);
+          if (packed.status !== 0) throw new Error(packed.stderr);
+          const tarball = JSON.parse(packed.stdout)[0];
+          const existing = run(['view', `${pkg.name}@${pkg.version}`, 'dist.integrity', '--json']);
+          if (existing.status === 0) {
+            if (JSON.parse(existing.stdout) !== tarball.integrity) throw new Error('Published version differs from this build; refusing to resume');
+            console.log('This exact package is already published; continuing release artifacts.');
+          } else {
+            const error = JSON.parse(existing.stdout);
+            if (error.error?.code !== 'E404') throw new Error(existing.stderr);
+            const result = spawnSync('npm', ['publish', tarball.filename, '--access', 'public'], { stdio: 'inherit' });
+            if (result.status !== 0) process.exit(result.status || 1);
+          }
+          JS
 
       - name: Build Claude Desktop Extension (.mcpb)
         run: npm run bundle:mcpb
@@ -172,8 +191,8 @@ jobs:
             echo "## 🧪 Dry-run summary"
             echo ""
             echo "- **Package**: \`${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }}\`"
-            echo "- `npm publish` executed with `--dry-run` (no tarball uploaded)"
+            echo '- npm publish executed with --dry-run (no tarball uploaded)'
             echo "- GitHub Release **not** created"
             echo "- MCP Registry publish **not** triggered"
-            echo "- `.mcpb` bundle built and attached below as a workflow artifact"
+            echo '- .mcpb bundle built and attached below as a workflow artifact'
           } >> "$GITHUB_STEP_SUMMARY"

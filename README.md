@@ -8,7 +8,7 @@ Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md
 
 ## Currently implemented
 
-- **CLI** — package and binary identity are `starter-series`; after the unscoped npm package is published, `npx starter-series my-bot --template discord-bot` scaffolds one of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
+- **CLI** — package and binary identity are `starter-series`; `npx starter-series my-bot --template discord-bot` scaffolds one of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
 - **MCP server** — nine stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. One binary chooses the mode by argv (positional -> CLI, none -> MCP stdio).
 - **Claude Desktop extension** — `.mcpb` bundle on every release; drag onto the Claude Desktop settings window.
 - **Claude Code plugin + skill** — `/plugin install create-starter@starter-series` ships the MCP server and the conversational `create` skill together.
@@ -43,10 +43,9 @@ Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md
 ## Quick start — CLI
 
 ```bash
-# After the unscoped npm package is published:
 npx starter-series my-bot --template discord-bot
 
-# Before npm publication, run from source:
+# Or build from a create-starter checkout:
 npm ci
 npm run build
 node dist/index.js my-bot --template discord-bot
