@@ -252,13 +252,13 @@ async function runMcpServer(): Promise<void> {
     "audit_instructions",
     {
       description:
-        "Audit local agent instruction files for exact same-file duplicates, cross-file surface overlap, and advisory keyword risk summaries. Read-only; does not rewrite files and is not semantic drift or safety enforcement.",
-      inputSchema: auditPathInput,
+        "Check local instruction discovery, source topology, exact duplicates/overlap, owner decisions and previous-run delta. Read-only by default; update_state explicitly saves the baseline, never source instructions. No semantic or safety enforcement.",
+      inputSchema: { ...auditPathInput, update_state: z.boolean().optional().describe("Explicitly save the current instruction delta baseline; default false.") },
       outputSchema: auditInstructionsOutputShape,
     },
-    async ({ path: repoPath }) => {
+    async ({ path: repoPath, update_state }) => {
       try {
-        const report: AuditInstructionsReport = await auditInstructions(repoPath ?? process.cwd());
+        const report: AuditInstructionsReport = await auditInstructions(repoPath ?? process.cwd(), {updateState:update_state});
         return {
           content: [{ type: "text" as const, text: formatAuditInstructionsReport(report) }],
           structuredContent: report as unknown as Record<string, unknown>,

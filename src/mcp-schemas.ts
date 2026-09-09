@@ -233,6 +233,12 @@ const instructionExampleSchema = z.object({
 });
 
 export const auditInstructionsOutputShape = {
+  topology: z.object({
+    schemaVersion:z.literal(1), canonicalPath:z.string().nullable(), sourceStrategy:z.enum(['standalone','single_source','mixed','unresolved']),
+    files:z.array(z.object({path:z.string(),role:z.enum(['canonical','import_alias','symlink_alias','verbatim_mirror','contextual_layer','local_override']),evidence:z.string(),imports:z.array(z.object({specifier:z.string(),path:z.string(),existsInScan:z.boolean()})),isSymlink:z.boolean(),symlinkTarget:z.string().nullable(),byteIdenticalTo:z.string().nullable(),sha256:z.string()})),
+    warnings:z.array(z.object({code:z.string(),message:z.string(),path:z.string()})),
+  }),
+  review:z.object({findings:z.array(z.object({id:z.string(),kind:z.enum(['duplicate','overlap','topology']),paths:z.array(z.string()),evidenceHash:z.string(),decision:z.enum(['pending','accepted','stale']),reason:z.string().optional()})),delta:z.object({new:z.array(z.string()),changed:z.array(z.string()),resolved:z.array(z.string()),known:z.array(z.string())}),stateUpdated:z.boolean()}),
   repoPath: z.string(),
   files: z.array(z.string()),
   duplicates: z.array(

@@ -60,6 +60,7 @@ Usage
   starter-series audit [path]
   starter-series audit-cd [path]
   starter-series audit-security [path]
+  starter-series check [path] [--instructions]
   starter-series audit-instructions [path]
   starter-series proof-report [path] [--output <file>] [--stdout]
   starter-series seed-security-guidance [path] [--force]
@@ -234,3 +235,29 @@ Registry 디스커버리를 지원하는 MCP 클라이언트는 경로를 수동
 ## 라이선스
 
 MIT © heznpc
+
+## Instruction 검사
+
+```bash
+starter-series check --instructions [path]
+starter-series check --instructions [path] --json
+starter-series check --instructions [path] --update-state
+```
+
+`--instructions` 없는 `check`는 기존 release·CD·security·instruction audit를 실행합니다. `audit-instructions`는 호환 alias로 유지합니다. MCP는 `audit_instructions(path?, update_state?)`, 라이브러리는 `auditInstructions(path?, { updateState? })`를 사용합니다.
+
+한 번의 scan으로 AGENTS/CLAUDE/GEMINI, override, Copilot instruction, Cursor rule, Claude rules/skills, `.agents` rules/skills/workflows를 찾습니다. import·symlink alias, verbatim mirror, local override, exact duplicate, cross-file overlap을 보고합니다. canonical은 명시적 설정이 없으면 링크와 파일명으로 추정합니다. 의미적 유사도는 판정하지 않으며 instruction 원문은 수정하지 않습니다.
+
+선택적인 `.starter-series/instructions.json`에서 canonical과 오너 결정을 지정합니다. JSON 보고서의 정확한 `id`, `evidenceHash`, `paths`를 결정의 `id`, `evidenceHash`, `scope`로 옮기고 오너가 이유·승인자·승인일을 명시합니다.
+
+```json
+{
+  "schemaVersion": 1,
+  "canonical": "AGENTS.md",
+  "decisions": []
+}
+```
+
+각 결정은 `reason`, `approvedBy`, `approvedAt`(YYYY-MM-DD), 그리고 `reviewAfter`·`expiresAt`(YYYY-MM-DD)·`reviewReason` 중 하나 이상이 필요합니다. 정확한 finding과 scope만 승인하며 증거 변경·만료·재검토 기한 도달 시 stale로 돌아갑니다. 승인된 finding도 보고서에 남습니다. 이 파일은 오너 승인 기록이며 인증 수단은 아닙니다.
+
+기본 검사는 읽기 전용입니다. `--update-state` 또는 MCP `update_state: true`를 명시할 때만 `.starter-series/instructions-state.json`에 비교 기준을 저장합니다. delta는 new·changed·known·resolved로 표시하며 상태에는 instruction 원문 대신 ID와 증거 hash만 저장합니다. 팀 공유 baseline이 필요할 때만 커밋하세요. 잘못된 메타데이터는 실패 처리합니다. 종료 코드는 clean/advisory 또는 승인된 finding은 0, pending/stale은 1, 사용법·실행 오류는 2입니다.

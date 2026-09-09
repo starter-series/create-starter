@@ -1,5 +1,8 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { scanInstructions, type InstructionDocument } from "./instructions/scan.js";
+import { analyzeInstructionSources, type SourceReport } from "./instructions/topology.js";
+import { reviewInstructions, loadInstructionConfig, type InstructionReview, type InstructionOptions } from "./instructions/review.js";
+import { existsSync, statSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 
 export type InstructionVerdict = "clean" | "advisory" | "attention";
 export type InstructionRecommendation = "remove_duplicate" | "review_duplicate" | "keep_explicit";
@@ -53,6 +56,8 @@ export interface InstructionRiskSummary {
 }
 
 export interface AuditInstructionsReport {
+  topology: SourceReport;
+  review: InstructionReview;
   repoPath: string;
   files: string[];
   duplicates: InstructionDuplicate[];
@@ -74,30 +79,6 @@ interface SegmentGroup {
   occurrences: InstructionOccurrence[];
   risks: InstructionRiskLabel[];
 }
-
-const IGNORED_DIRS = new Set([
-  ".git",
-  ".next",
-  ".turbo",
-  "build",
-  "coverage",
-  "dist",
-  "fixtures",
-  "node_modules",
-  "out",
-  "test",
-  "tests",
-  "tmp",
-  "worktrees",
-]);
-
-const DOC_NAMES = new Set([
-  "AGENTS.md",
-  "AGENTS.override.md",
-  "CLAUDE.md",
-  "GEMINI.md",
-  "copilot-instructions.md",
-]);
 
 const RISK_INVENTORY_TERMS = [
   /\bidentity\b/i,
@@ -209,33 +190,6 @@ const RISK_RULES: { label: InstructionRiskLabel; patterns: RegExp[] }[] = [
   },
 ];
 
-function normalizePath(path: string): string {
-  return path.split(sep).join("/");
-}
-
-function isInstructionFile(path: string): boolean {
-  const name = basename(path);
-  if (DOC_NAMES.has(name)) return true;
-  const normalized = normalizePath(path);
-  return normalized.includes("/.github/instructions/") && name.endsWith(".instructions.md");
-}
-
-function discoverInstructionFiles(root: string): string[] {
-  const found: string[] = [];
-  function walk(directory: string): void {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = resolve(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (!IGNORED_DIRS.has(entry.name)) walk(path);
-      } else if (entry.isFile() && isInstructionFile(path)) {
-        found.push(normalizePath(relative(root, path)));
-      }
-    }
-  }
-  walk(root);
-  return found.sort((left, right) => left.localeCompare(right));
-}
-
 function normalizeSegment(text: string): string {
   return text
     .trim()
@@ -333,22 +287,9 @@ function pathsFor(occurrences: InstructionOccurrence[]): string[] {
   return [...new Set(occurrences.map((occurrence) => occurrence.path))].sort((left, right) => left.localeCompare(right));
 }
 
-function hasSameFileRepeat(occurrences: InstructionOccurrence[]): boolean {
-  const counts = new Map<string, number>();
-  for (const occurrence of occurrences) counts.set(occurrence.path, (counts.get(occurrence.path) ?? 0) + 1);
-  return [...counts.values()].some((count) => count > 1);
-}
-
-function sameFileRepeatPath(occurrences: InstructionOccurrence[]): string | null {
-  const counts = new Map<string, number>();
-  for (const occurrence of occurrences) counts.set(occurrence.path, (counts.get(occurrence.path) ?? 0) + 1);
-  return [...counts.entries()].find(([, count]) => count > 1)?.[0] ?? null;
-}
-
-function groupSegments(root: string, files: string[]): SegmentGroup[] {
+function groupSegments(documents: InstructionDocument[]): SegmentGroup[] {
   const grouped = new Map<string, InstructionOccurrence[]>();
-  for (const file of files) {
-    const text = readFileSync(resolve(root, file), "utf8");
+  for (const {path: file, text} of documents) {
     for (const segment of extractSegments(text)) {
       const occurrences = grouped.get(segment.text) ?? [];
       occurrences.push({ path: file, line: segment.line });
@@ -361,21 +302,13 @@ function groupSegments(root: string, files: string[]): SegmentGroup[] {
 }
 
 function findDuplicates(groups: SegmentGroup[], minChars: number): InstructionDuplicate[] {
-  return groups
-    .filter((group) => group.text.length >= minChars && hasSameFileRepeat(group.occurrences))
-    .map((group, index) => {
-      const path = sameFileRepeatPath(group.occurrences) ?? group.occurrences[0]?.path ?? "";
-      const occurrences = group.occurrences.filter((occurrence) => occurrence.path === path);
-      return {
-        id: `DUP_${String(index + 1).padStart(2, "0")}`,
-        text: group.text,
-        path,
-        repeats: occurrences.length,
-        occurrences,
-        risks: group.risks,
-        recommendation: isHighRisk(group.risks) ? "keep_explicit" : "remove_duplicate",
-      };
-    });
+  return groups.filter(group => group.text.length >= minChars).flatMap(group =>
+    pathsFor(group.occurrences).flatMap(path => {
+      const occurrences = group.occurrences.filter(item => item.path === path);
+      if (occurrences.length < 2) return [];
+      return [{id:"",text:group.text,path,repeats:occurrences.length,occurrences,risks:group.risks,
+        recommendation:(isHighRisk(group.risks) ? "keep_explicit" : "remove_duplicate") as InstructionDuplicate["recommendation"]}];
+    })).map((item,index) => ({...item,id:`DUP_${String(index+1).padStart(2,"0")}`}));
 }
 
 function findSurfaceOverlaps(groups: SegmentGroup[], minChars: number): InstructionSurfaceOverlap[] {
@@ -429,22 +362,29 @@ function findRiskSummaries(groups: SegmentGroup[]): InstructionRiskSummary[] {
     });
 }
 
-export async function auditInstructions(repoPath = process.cwd()): Promise<AuditInstructionsReport> {
+export async function auditInstructions(repoPath = process.cwd(), options: InstructionOptions = {}): Promise<AuditInstructionsReport> {
   const root = isAbsolute(repoPath) ? repoPath : resolve(process.cwd(), repoPath);
   if (!existsSync(root) || !statSync(root).isDirectory()) {
     throw new Error(`Not a directory: ${root}`);
   }
-  const files = discoverInstructionFiles(root);
-  const groups = groupSegments(root, files);
+  const config = loadInstructionConfig(root);
+  const documents = scanInstructions(root);
+  const files = documents.map(file => file.path);
+  const topology = analyzeInstructionSources(documents, root, config.canonical);
+  const aliases = new Set(topology.files.filter(file => file.role === "symlink_alias" || file.role === "import_alias").map(file => file.path));
+  const groups = groupSegments(documents.filter(file => !aliases.has(file.path)));
   const duplicates = findDuplicates(groups, 40);
   const surfaceOverlaps = findSurfaceOverlaps(groups, 40);
   const riskSummaries = findRiskSummaries(groups);
   const warnings: string[] = [];
   if (files.length === 0) warnings.push("No agent instruction files found.");
-  const hasReviewFindings = duplicates.length > 0 || surfaceOverlaps.length > 0;
+  const review = reviewInstructions(root, {duplicates, surfaceOverlaps, topology}, config, options);
+  const hasReviewFindings = review.findings.some(finding => finding.decision !== "accepted");
   const hasAdvisoryFindings = riskSummaries.length > 0;
   return {
     repoPath: root,
+    topology,
+    review,
     files,
     duplicates,
     surfaceOverlaps,
@@ -481,6 +421,9 @@ export function formatAuditInstructionsReport(report: AuditInstructionsReport): 
     `surface overlaps: ${report.surfaceOverlaps.length}`,
     `risk summaries: ${report.riskSummaries.length}`,
     `verdict: ${report.overall.verdict}`,
+    `canonical: ${report.topology.canonicalPath ?? "none"} (${report.topology.sourceStrategy}; inferred unless configured)`,
+    `decisions: ${report.review.findings.filter(f => f.decision === "accepted").length} accepted`,
+    `delta: ${report.review.delta.new.length} new, ${report.review.delta.changed.length} changed, ${report.review.delta.resolved.length} resolved`,
     "",
   ];
   if (report.overall.warnings.length > 0) {
@@ -504,6 +447,16 @@ export function formatAuditInstructionsReport(report: AuditInstructionsReport): 
       );
       out.push(...formatExamples(overlap.examples, 3));
     }
+    out.push("");
+  }
+  if (report.topology.warnings.length > 0) {
+    out.push("Source topology:");
+    for (const warning of report.topology.warnings) out.push(`- ${warning.code}: ${warning.message}`);
+    out.push("");
+  }
+  if (report.review.findings.length > 0) {
+    out.push("Review identities (use JSON for evidence and approval scope):");
+    for (const finding of report.review.findings) out.push(`- ${finding.id} ${finding.kind}: ${finding.decision}`);
     out.push("");
   }
   if (report.riskSummaries.length > 0) {
