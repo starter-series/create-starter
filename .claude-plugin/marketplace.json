@@ -13,9 +13,9 @@
       "name": "shotkit",
       "source": {
         "source": "github",
-        "repo": "starter-series/shotkit"
+        "repo": "heznpc/shotkit"
       },
-      "description": "Capture Chrome Web Store + social promo assets (screenshots, promo tiles, demo screencast, listing copy) from a built browser extension — bundles the capture skill."
+      "description": "Independent Heznpc tool. Capture Chrome Web Store + social promo assets (screenshots, promo tiles, demo screencast, listing copy) from a built browser extension — bundles the capture skill."
     }
   ]
 }
