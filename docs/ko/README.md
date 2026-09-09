@@ -8,7 +8,7 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 ## Currently implemented (현재 구현된 것)
 
-- **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. unscoped npm 패키지가 게시된 뒤에는 `npx starter-series my-bot --template discord-bot`로 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
+- **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. `npx starter-series my-bot --template discord-bot`로 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
 - **MCP 서버** — stdio 툴 9개: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 하나의 바이너리가 argv로 모드를 선택합니다 (positional 인자 → CLI, 없음 → MCP stdio).
 - **Claude Desktop 확장** — 모든 릴리스에 `.mcpb` 번들 포함. Claude Desktop 설정 창에 드래그하면 끝.
 - **Claude Code 플러그인 + 스킬** — `/plugin install create-starter@starter-series` 한 줄로 MCP 서버와 대화형 `create` 스킬을 함께 설치.
@@ -43,10 +43,9 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 ## 빠른 시작 — CLI
 
 ```bash
-# unscoped npm 패키지가 게시된 뒤:
 npx starter-series my-bot --template discord-bot
 
-# npm 게시 전에는 소스에서 실행:
+# 또는 create-starter checkout의 소스에서 실행:
 npm ci
 npm run build
 node dist/index.js my-bot --template discord-bot
