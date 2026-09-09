@@ -1,6 +1,6 @@
 {
   "name": "create-starter",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
   "author": {
     "name": "heznpc",

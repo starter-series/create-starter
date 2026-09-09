@@ -6,6 +6,9 @@ Part of: **Human-Controlled AI Systems** — scaffolding is the easy half. What 
 
 Korean documentation is maintained under [`docs/ko/README.md`](docs/ko/README.md); the root README stays English-only.
 
+Security checks inspect local workflow definitions and referenced `starter-series/.github` policy, including composite actions and invoked scripts. Evidence includes source paths and content hashes. Unreadable or unsupported reusable workflows are reported as unverified; this checks configuration, not the latest Actions run or a live vulnerability scan.
+
+
 ## Currently implemented
 
 - **CLI** — package and binary identity are `starter-series`; `npx starter-series my-bot --template discord-bot` scaffolds one of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.

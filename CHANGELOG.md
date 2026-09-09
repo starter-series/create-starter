@@ -13,6 +13,11 @@ release feed without duplicating maintenance.
 
 ## [Unreleased]
 
+### Fixed
+- Security checks follow referenced Starter Series reusable workflows, composite actions, and invoked policy scripts, with source hashes and explicit unresolved-policy evidence. Central policy no longer appears missing on fleet starters.
+- Reject ambiguous write flags, prevent guidance symlink writes, and share instruction fence handling (#95).
+- Keep MCP Registry description within its length limit (#94).
+
 ### Added
 - `check --instructions` consolidates instruction discovery, source topology, exact duplicate/overlap review, owner decisions and new/changed/resolved delta. Existing CLI and MCP audit aliases share the same engine; state writes require explicit opt-in.
 - **`proof-report` CLI subcommand + `generate_launch_proof_report` MCP tool** — combines `audit_release`, `audit_cd`, and `audit_security` into a client-ready `launch-proof-report.md` Markdown handoff. The report keeps raw audit evidence, aggregates blockers/warnings, writes by default in CLI mode, stays read-only by default in MCP mode, and exits 1 unless the overall verdict is READY. Added EN/KO docs under `docs/launch-proof-report.*`.

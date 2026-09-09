@@ -1,6 +1,6 @@
 {
   "name": "starter-series",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
@@ -61,6 +61,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "tar": "^7.5.0",
+    "yaml": "^2.9.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
