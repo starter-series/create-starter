@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.starter-series/create-starter",
   "description": "Scaffold Starter Series projects and check release, deployment, security, and agent instructions.",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "repository": {
     "url": "https://github.com/starter-series/create-starter",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "starter-series",
-      "version": "0.5.2",
+      "version": "0.5.3",
       "transport": {
         "type": "stdio"
       }
