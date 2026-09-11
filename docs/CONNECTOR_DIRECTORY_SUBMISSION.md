@@ -290,7 +290,7 @@ Suggested flow:
 
 1. `01-list-templates.png` — Claude rendering the `list_templates` JSON as a table.
 2. `02-create-project.png` — Claude confirming `create_project` args and the resulting file tree.
-3. `03-scaffold-complete.png` — the `README.md` of a freshly scaffolded `discord-bot` open in the user's editor.
+3. `03-scaffold-complete.png` — the `README.md` of a freshly scaffolded `npm-package` open in the user's editor.
 
 ---
 

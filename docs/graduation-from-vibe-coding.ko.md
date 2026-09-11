@@ -29,7 +29,7 @@
 
 ```
 1. 진단        → audit, audit-cd, audit-security
-2. target 선택 → docker-deploy / cloudflare-pages / npm-package / …
+2. target 선택 → docker-deploy / npm-package / …
 3. CI/CD 이식   → 매칭 starter의 .github/workflows 복사
 4. 시크릿 설정  → gh secret set 으로 repo secret 등록
 5. 검증        → audit 재실행; 릴리즈 태깅
@@ -66,14 +66,10 @@ npx -y starter-series audit-security
 | 너의 앱 | 추천 target | Starter |
 |---------|-----|---------|
 | Next.js / Vite / React 앱을 **자체 VPS에** | Docker + GHCR + SSH | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) |
-| **정적 사이트** (HTML/CSS + 가벼운 JS) | Cloudflare Pages | [`cloudflare-pages`](https://github.com/starter-series/cloudflare-pages-starter) |
 | **Claude / voice agent** (서버사이드 런타임) | Cloudflare Workers + Claude Managed Agents | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) (adapter) — 아래 노트 |
 | **브라우저 확장** (이미 MV3) | CWS + AMO | [`browser-extension`](https://github.com/starter-series/browser-extension-starter) |
-| **크로스 플랫폼 데스크톱** | electron-builder + code signing | [`electron-app`](https://github.com/starter-series/electron-app-starter) |
-| **모바일 앱** | Expo + EAS | [`react-native`](https://github.com/starter-series/react-native-starter) |
-| **Discord/Telegram 봇** | Docker + Railway/Fly | [`discord-bot`](https://github.com/starter-series/discord-bot-starter) / [`telegram-bot`](https://github.com/starter-series/telegram-bot-starter) |
 | **재사용 가능 라이브러리** | npm OIDC trusted publishing | [`npm-package`](https://github.com/starter-series/npm-package-starter) |
-| **Python 도구 / 에이전트** | PyPI OIDC trusted publishing | [`python-mcp-server`](https://github.com/starter-series/python-mcp-server-starter) |
+| **Python 도구 / 에이전트** | PyPI OIDC trusted publishing | [`mcp-server-python`](https://github.com/starter-series/python-mcp-server-starter) |
 
 > **Cloudflare Workers 위 Claude / voice agent (2026-05 추가)** — Anthropic과 Cloudflare가 Claude Managed Agents on Cloudflare Workers를 발표 (2026-05-19), 일주일 후 `@cloudflare/voice` SDK 출시 (2026-05-26). 현재 두 경로 (둘 다 기존 `docker-deploy` starter 기반):
 >
@@ -93,9 +89,8 @@ npx -y starter-series audit-security
 >
 > **(b) 컨테이너 경로** — `docker-deploy-starter` 그대로 유지하고 Claude Managed Agents 프로토콜을 지원하는 호스트에서 컨테이너 실행. 트레이드오프: Workers 네이티브 cold start 이점 없음.
 >
-> Managed Agents API 안정화 시 별도 `cloudflare-workers-agent` starter 로드맵 ([starter-series/cloudflare-pages-starter#1](https://github.com/starter-series/cloudflare-pages-starter/issues) 추적).
 
-**가장 흔한 경로**: 바이브 코딩 React/Next/Vite SPA → `docker-deploy` (자체 소유 VPS) 또는 `cloudflare-pages` (무료, 무제한 대역폭).
+**가장 흔한 경로**: 바이브 코딩 React/Next/Vite SPA → `docker-deploy` (자체 소유 VPS).
 
 ---
 
@@ -149,9 +144,6 @@ diff -r my-fresh/.github .github
 | python-mcp-server | (OIDC 사용시 없음) | ✅ 예, PyPI에서 설정 |
 | browser-extension | `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | 아니오 |
 | vscode-extension | `VSCE_PAT`, `OVSX_PAT` | 아니오 |
-| electron-app | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, 서명 인증서 + 비번 | 아니오 |
-| react-native | `EXPO_TOKEN` | 아니오 |
-| cloudflare-pages | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | 아니오 |
 
 ```bash
 # 예: docker-deploy 시크릿 설정

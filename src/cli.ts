@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { stderrLogger } from "./log.js";
 import { formatScaffoldReport, scaffold } from "./scaffold.js";
-import { getTemplate, templates } from "./templates.js";
+import { getTemplate, templates, retiredTemplateIds } from "./templates.js";
 import { auditRelease, formatAuditReport } from "./audit.js";
 import { auditCd, formatAuditCdReport } from "./audit-cd.js";
 import { auditSecurity, formatAuditSecurityReport } from "./audit-security.js";
@@ -83,7 +83,7 @@ Environment
   CREATE_STARTER_DEBUG=1   Emit verbose stderr logs
 
 Examples
-  starter-series my-bot --template discord-bot
+  starter-series my-package --template npm-package
   starter-series my-api --template mcp-server --description "My coding agent"
   starter-series audit
   starter-series audit /path/to/repo
@@ -497,6 +497,10 @@ export async function runCli(argv: string[]): Promise<number> {
   }
   const template = getTemplate(templateId);
   if (!template) {
+    if (retiredTemplateIds.includes(templateId)) {
+      process.stderr.write(`error: template "${templateId}" is no longer available for downloads; existing repositories can still be audited (run --list for available templates)\n`);
+      return 2;
+    }
     process.stderr.write(`error: unknown template "${templateId}" (run --list to see options)\n`);
     return 2;
   }

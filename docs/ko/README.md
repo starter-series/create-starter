@@ -11,7 +11,7 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 ## Currently implemented (현재 구현된 것)
 
-- **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. `npx starter-series my-bot --template discord-bot`로 11개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
+- **CLI** — 패키지와 바이너리 이름은 `starter-series`입니다. `npx starter-series my-package --template npm-package`로 6개 공개 템플릿 중 하나를 Zod 검증된 입력, 성공 시 atomic rename, retry + timeout + 50 MB 다운로드 캡으로 스캐폴딩합니다.
 - **MCP 서버** — stdio 툴 9개: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. 하나의 바이너리가 argv로 모드를 선택합니다 (positional 인자 → CLI, 없음 → MCP stdio).
 - **Claude Desktop 확장** — 모든 릴리스에 `.mcpb` 번들 포함. Claude Desktop 설정 창에 드래그하면 끝.
 - **Claude Code 플러그인 + 스킬** — `/plugin install create-starter@starter-series` 한 줄로 MCP 서버와 대화형 `create` 스킬을 함께 설치.
@@ -40,18 +40,18 @@ Part of: **Human-Controlled AI Systems** — 스캐폴딩은 쉬운 절반에 �
 
 - **`audit_cd`의 모든 벤더 동등 지원.** 공개 read API가 없는 destination은 확실하게 틀린 상태를 보고하기보다 `unsupported`로 남깁니다.
 - **앱 코드 재작성.** 졸업 플로우는 매칭 starter에서 CI/CD를 이식할 뿐, 애플리케이션 코드는 절대 건드리지 않습니다.
-- **범용 프로젝트 생성기.** 템플릿은 Starter Series 11개로 고정. 새로운 스택은 `create_project`의 플래그가 아니라 새로운 starter로 들어옵니다.
+- **범용 프로젝트 생성기.** 템플릿은 6 public Starter Series templates개로 고정. 새로운 스택은 `create_project`의 플래그가 아니라 새로운 starter로 들어옵니다.
 - **semantic instruction drift 또는 AI safety enforcement.** `audit_instructions`는 exact duplicate/surface overlap과 keyword reminder를 위한 review aid입니다. semantic similarity engine, runtime guardrail, red-team harness, exhaustive safety/security linter가 아닙니다.
 
 ## 빠른 시작 — CLI
 
 ```bash
-npx starter-series my-bot --template discord-bot
+npx starter-series my-package --template npm-package
 
 # 또는 create-starter checkout의 소스에서 실행:
 npm ci
 npm run build
-node dist/index.js my-bot --template discord-bot
+node dist/index.js my-package --template npm-package
 ```
 
 ```
@@ -96,14 +96,11 @@ Environment
 | `mcp-server` | TypeScript + `@modelcontextprotocol/sdk` + Zod |
 | `mcp-server-python` | Python + FastMCP |
 | `npm-package` | Jest + ESLint + OIDC publish |
-| `discord-bot` | discord.js v14 + Docker |
-| `telegram-bot` | grammY + Docker |
 | `browser-extension` | Chrome/Firefox MV3 |
 | `vscode-extension` | VS Marketplace + Open VSX |
-| `electron-app` | 크로스 플랫폼 + code signing |
-| `react-native` | Expo + EAS |
-| `cloudflare-pages` | Wrangler + Pages |
 | `docker-deploy` | 언어 무관 + GHCR + SSH |
+
+목록의 6개 공개 템플릿만 생성·컴포넌트 다운로드에 사용할 수 있습니다. 이전 템플릿에서 생성한 프로젝트의 audit 식별은 유지됩니다.
 
 `starter-series --list` (CLI) 또는 `list_templates` (MCP)로 실시간 목록 확인.
 

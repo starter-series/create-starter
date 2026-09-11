@@ -290,7 +290,7 @@ Anthropic MCP App 스펙:
 
 1. `01-list-templates.png` — Claude가 `list_templates` JSON을 테이블로 렌더.
 2. `02-create-project.png` — Claude가 `create_project` 인자와 생성된 파일 트리를 확인.
-3. `03-scaffold-complete.png` — 갓 스캐폴드된 `discord-bot`의 `README.md`가 사용자 에디터에 열린 모습.
+3. `03-scaffold-complete.png` — 갓 스캐폴드된 `npm-package`의 `README.md`가 사용자 에디터에 열린 모습.
 
 ---
 

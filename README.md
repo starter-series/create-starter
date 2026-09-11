@@ -11,7 +11,7 @@ Security checks inspect local workflow definitions and referenced `starter-serie
 
 ## Currently implemented
 
-- **CLI** — package and binary identity are `starter-series`; `npx starter-series my-bot --template discord-bot` scaffolds one of 11 templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
+- **CLI** — package and binary identity are `starter-series`; `npx starter-series my-package --template npm-package` scaffolds one of 6 public templates with Zod-validated input, atomic rename on success, retry + timeout + 50 MB download cap.
 - **MCP server** — nine stdio tools: `list_templates`, `create_project`, `audit_release`, `audit_cd`, `audit_security`, `audit_instructions`, `generate_launch_proof_report`, `seed_security_guidance`, `add_component`. One binary chooses the mode by argv (positional -> CLI, none -> MCP stdio).
 - **Claude Desktop extension** — `.mcpb` bundle on every release; drag onto the Claude Desktop settings window.
 - **Claude Code plugin + skill** — `/plugin install create-starter@starter-series` ships the MCP server and the conversational `create` skill together.
@@ -40,18 +40,18 @@ Security checks inspect local workflow definitions and referenced `starter-serie
 
 - **Full vendor parity in `audit_cd`.** Destinations without a public read API stay `unsupported` rather than reporting confidently-wrong state.
 - **Rewriting app code.** The graduation flow lifts CI/CD from the matching starter; it never touches application code.
-- **A general-purpose project generator.** Templates are the Starter Series 11. New stacks land as new starters, not as flags on `create_project`.
+- **A general-purpose project generator.** Templates are the 6 public Starter Series templates. New stacks land as new starters, not as flags on `create_project`.
 - **Semantic instruction drift or AI safety enforcement.** `audit_instructions` is a review aid for exact duplicate/surface overlap and keyword reminders. It is not a semantic similarity engine, runtime guardrail, red-team harness, or exhaustive safety/security linter.
 
 ## Quick start — CLI
 
 ```bash
-npx starter-series my-bot --template discord-bot
+npx starter-series my-package --template npm-package
 
 # Or build from a create-starter checkout:
 npm ci
 npm run build
-node dist/index.js my-bot --template discord-bot
+node dist/index.js my-package --template npm-package
 ```
 
 ```
@@ -96,14 +96,11 @@ Environment
 | `mcp-server` | TypeScript + `@modelcontextprotocol/sdk` + Zod |
 | `mcp-server-python` | Python + FastMCP |
 | `npm-package` | Jest + ESLint + OIDC publish |
-| `discord-bot` | discord.js v14 + Docker |
-| `telegram-bot` | grammY + Docker |
 | `browser-extension` | Chrome/Firefox MV3 |
 | `vscode-extension` | VS Marketplace + Open VSX |
-| `electron-app` | cross-platform + code signing |
-| `react-native` | Expo + EAS |
-| `cloudflare-pages` | Wrangler + Pages |
 | `docker-deploy` | any language + GHCR + SSH |
+
+Only the six public templates listed here are available for generation and component downloads. Existing projects based on former templates can still be audited.
 
 Run `starter-series --list` (CLI) or call `list_templates` (MCP) for the authoritative, up-to-date list.
 

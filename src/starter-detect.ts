@@ -169,7 +169,7 @@ export function extractStarterSignals(repoPath: string): StarterSignals {
     if (FRONTEND.some((d) => depFrom(pkg, d))) {
       id = "cloudflare-pages";
       confidence = "low";
-      signals.push("front-end web app (vite/next/astro/etc.), no deploy target — suggesting cloudflare-pages for static-site deploy");
+      signals.push("front-end web app (vite/next/astro/etc.), no deploy target — resembles the former cloudflare-pages template (audit identification only)");
     }
   }
 

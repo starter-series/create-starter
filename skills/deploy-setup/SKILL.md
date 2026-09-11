@@ -85,6 +85,8 @@ Once secrets are in place and OIDC is registered:
 
 ```bash
 # Bump version first (some templates require this; check cd.yml's version-guard step)
+
+Existing-repository setup may identify former templates. For new template downloads, use `list_templates`; retired templates are unavailable for scaffolding and `add_component`.
 npm run version:patch  # or version:minor, or version:major
 
 # Commit + push the version bump

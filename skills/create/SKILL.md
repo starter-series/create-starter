@@ -29,13 +29,8 @@ The `create-starter` MCP server exposes two tools. Use them directly — do **no
 | `mcp-server` | MCP Server (TypeScript) | mcp |
 | `mcp-server-python` | MCP Server (Python) | mcp |
 | `npm-package` | npm Package | package |
-| `discord-bot` | Discord Bot | bot |
-| `telegram-bot` | Telegram Bot | bot |
 | `browser-extension` | Browser Extension (MV3) | extension |
 | `vscode-extension` | VS Code Extension | extension |
-| `electron-app` | Electron App | app |
-| `react-native` | React Native (Expo) | app |
-| `cloudflare-pages` | Cloudflare Pages | deploy |
 | `docker-deploy` | Docker Deploy (language-agnostic) | deploy |
 
 Call `list_templates` for the authoritative, up-to-date list with full metadata.

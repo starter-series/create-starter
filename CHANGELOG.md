@@ -14,6 +14,7 @@ release feed without duplicating maintenance.
 ## [Unreleased]
 
 ### Fixed
+- Remove five private templates from CLI/MCP generation and component downloads while retaining existing-repository audit detection. Public examples and post-generation commands now match the six available templates.
 - Security checks follow referenced Starter Series reusable workflows, composite actions, and invoked policy scripts, with source hashes and explicit unresolved-policy evidence. Central policy no longer appears missing on fleet starters.
 - Reject ambiguous write flags, prevent guidance symlink writes, and share instruction fence handling (#95).
 - Keep MCP Registry description within its length limit (#94).

@@ -1,6 +1,6 @@
 {
   "name": "starter-series",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Scaffold, audit, and generate Launch Proof Reports for Starter Series projects — slash commands, skill, MCP server, and CLI.",
   "mcpName": "io.github.starter-series/create-starter",
   "type": "module",
