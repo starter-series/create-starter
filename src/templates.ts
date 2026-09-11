@@ -12,6 +12,8 @@ export interface Template {
 
 const ORG = "starter-series";
 
+export const retiredTemplateIds: readonly string[] = ["discord-bot", "telegram-bot", "electron-app", "react-native", "cloudflare-pages"];
+
 const JS_STEPS = ["npm install", "npm run dev"];
 const PY_STEPS = [
   "python -m venv .venv && source .venv/bin/activate",
@@ -50,29 +52,7 @@ export const templates: Template[] = [
     stack: ["javascript", "jest", "eslint"],
     category: "package",
     defaults: { name: "my-package", description: "A lightweight npm package" },
-    postSteps: JS_STEPS,
-  },
-  {
-    id: "discord-bot",
-    name: "Discord Bot",
-    description:
-      "Discord.js v14 bot with auto-loaded slash commands, Docker, and one-click deploy",
-    repo: `${ORG}/discord-bot-starter`,
-    stack: ["typescript", "discord.js", "docker"],
-    category: "bot",
-    defaults: { name: "my-discord-bot", description: "A Discord bot" },
-    postSteps: JS_STEPS,
-  },
-  {
-    id: "telegram-bot",
-    name: "Telegram Bot",
-    description:
-      "grammY bot with polling + webhook dual mode, Docker, and one-click deploy",
-    repo: `${ORG}/telegram-bot-starter`,
-    stack: ["typescript", "grammy", "docker"],
-    category: "bot",
-    defaults: { name: "my-telegram-bot", description: "A Telegram bot" },
-    postSteps: JS_STEPS,
+    postSteps: ["npm install", "npm test", "npm run build"],
   },
   {
     id: "browser-extension",
@@ -97,40 +77,7 @@ export const templates: Template[] = [
       name: "my-vscode-extension",
       description: "A VS Code extension",
     },
-    postSteps: JS_STEPS,
-  },
-  {
-    id: "electron-app",
-    name: "Electron App",
-    description:
-      "Cross-platform desktop app with code signing, auto-update, macOS/Windows/Linux",
-    repo: `${ORG}/electron-app-starter`,
-    stack: ["typescript", "electron", "electron-builder"],
-    category: "app",
-    defaults: { name: "my-electron-app", description: "A desktop application" },
-    postSteps: JS_STEPS,
-  },
-  {
-    id: "react-native",
-    name: "React Native (Expo)",
-    description:
-      "Expo SDK 52 + EAS Build with App Store and Play Store CI/CD",
-    repo: `${ORG}/react-native-starter`,
-    stack: ["typescript", "expo", "react-native"],
-    category: "app",
-    defaults: { name: "my-app", description: "A mobile application" },
-    postSteps: JS_STEPS,
-  },
-  {
-    id: "cloudflare-pages",
-    name: "Cloudflare Pages",
-    description:
-      "Static site with Wrangler CLI and Cloudflare Pages auto-deploy",
-    repo: `${ORG}/cloudflare-pages-starter`,
-    stack: ["html", "css", "javascript", "wrangler"],
-    category: "deploy",
-    defaults: { name: "my-site", description: "A static website" },
-    postSteps: JS_STEPS,
+    postSteps: ["npm install", "npm test", "npm run build"],
   },
   {
     id: "docker-deploy",

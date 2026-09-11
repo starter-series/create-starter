@@ -15,12 +15,9 @@ You are walking the user through the **vibe-coding-to-production graduation** pa
    Surface gaps from each report. The matched starter id from `audit_release` determines the target in step 2.
 
 2. **Pick a target** — Map the matched starter (or app shape if `audit_release` returned `id: null`) to a Starter Series template:
-   - Next.js / Vite / React → `docker-deploy` (own VPS) or `cloudflare-pages` (static)
+   - Next.js / Vite / React → `docker-deploy` (own VPS)
    - Browser extension → `browser-extension` starter
-   - Discord/Telegram bot → matching bot starter
-   - Cross-platform desktop → `electron-app`
-   - Mobile → `react-native`
-   - Reusable library → `npm-package` or `python-mcp-server`
+   - Reusable library → `npm-package` or `mcp-server-python`
 
 3. **Lift CI/CD** — Copy `.github/workflows/` + Dockerfile (if applicable) + `.gitleaks.toml` from the matching starter. Replace placeholder owner/repo references with the user's current remote.
 

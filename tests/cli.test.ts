@@ -4,22 +4,22 @@ import { parseCliArgs } from "../src/cli.ts";
 
 describe("parseCliArgs", () => {
   it("parses a minimal create invocation", () => {
-    const parsed = parseCliArgs(["my-bot", "--template", "discord-bot"]);
+    const parsed = parseCliArgs(["my-bot", "--template", "npm-package"]);
     assert.deepEqual(parsed.positionals, ["my-bot"]);
-    assert.equal(parsed.values.template, "discord-bot");
+    assert.equal(parsed.values.template, "npm-package");
   });
 
   it("supports short flags", () => {
     const parsed = parseCliArgs([
       "my-bot",
       "-t",
-      "discord-bot",
+      "npm-package",
       "-d",
       "bot desc",
       "-o",
       "out/dir",
     ]);
-    assert.equal(parsed.values.template, "discord-bot");
+    assert.equal(parsed.values.template, "npm-package");
     assert.equal(parsed.values.description, "bot desc");
     assert.equal(parsed.values["output-dir"], "out/dir");
   });

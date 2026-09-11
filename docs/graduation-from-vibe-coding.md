@@ -31,7 +31,7 @@ Five steps. Each runs in your terminal. None of them require leaving your existi
 
 ```
 1. Diagnose       → audit, audit-cd, audit-security
-2. Pick a target  → docker-deploy / cloudflare-pages / npm-package / …
+2. Pick a target  → docker-deploy / npm-package / …
 3. Lift CI/CD     → copy .github/workflows from the matching starter
 4. Wire secrets   → repo secrets via gh secret set
 5. Verify         → re-run audit; tag a release
@@ -68,14 +68,10 @@ Each vibe-coding platform has a sensible default (Lovable → Netlify/Vercel, Bo
 | Your app | Recommended target | Starter |
 |----------|-------------------|---------|
 | Next.js / Vite / React app on **your own VPS** | Docker + GHCR + SSH | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) |
-| **Static site** (HTML/CSS + light JS) | Cloudflare Pages | [`cloudflare-pages`](https://github.com/starter-series/cloudflare-pages-starter) |
 | **Claude / voice agent** (server-side runtime) | Cloudflare Workers + Claude Managed Agents | [`docker-deploy`](https://github.com/starter-series/docker-deploy-starter) (adapter) — see note below |
 | **Browser extension** (already MV3) | CWS + AMO | [`browser-extension`](https://github.com/starter-series/browser-extension-starter) |
-| **Cross-platform desktop app** | electron-builder + code signing | [`electron-app`](https://github.com/starter-series/electron-app-starter) |
-| **Mobile app** | Expo + EAS | [`react-native`](https://github.com/starter-series/react-native-starter) |
-| **Discord/Telegram bot** | Docker + Railway/Fly | [`discord-bot`](https://github.com/starter-series/discord-bot-starter) / [`telegram-bot`](https://github.com/starter-series/telegram-bot-starter) |
 | **Reusable library** | npm OIDC trusted publishing | [`npm-package`](https://github.com/starter-series/npm-package-starter) |
-| **Python tool / agent** | PyPI OIDC trusted publishing | [`python-mcp-server`](https://github.com/starter-series/python-mcp-server-starter) |
+| **Python tool / agent** | PyPI OIDC trusted publishing | [`mcp-server-python`](https://github.com/starter-series/python-mcp-server-starter) |
 
 > **Claude / voice agent on Cloudflare Workers (added 2026-05)** — Anthropic and Cloudflare announced Claude Managed Agents on Cloudflare Workers (2026-05-19); the `@cloudflare/voice` SDK shipped a week later (2026-05-26). Two paths today, both via the existing `docker-deploy` starter:
 >
@@ -95,9 +91,8 @@ Each vibe-coding platform has a sensible default (Lovable → Netlify/Vercel, Bo
 >
 > **(b) Container path** — keep `docker-deploy-starter` unchanged and run the container on any host that speaks the Claude Managed Agents protocol; trade-off is no Workers-native cold start.
 >
-> A dedicated `cloudflare-workers-agent` starter is on the roadmap once the Managed Agents API stabilizes (track [starter-series/cloudflare-pages-starter#1](https://github.com/starter-series/cloudflare-pages-starter/issues)).
 
-**Most common path**: vibe-coded React/Next/Vite SPA → `docker-deploy` (any VPS you own) or `cloudflare-pages` (free, unlimited bandwidth).
+**Most common path**: vibe-coded React/Next/Vite SPA → `docker-deploy` (any VPS you own).
 
 ---
 
@@ -152,9 +147,6 @@ Every deploy target needs its own secret set. Common ones:
 | python-mcp-server | (none with OIDC) | ✅ Yes, set up at PyPI |
 | browser-extension | `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`, `AMO_JWT_ISSUER`, `AMO_JWT_SECRET` | No |
 | vscode-extension | `VSCE_PAT`, `OVSX_PAT` | No |
-| electron-app | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, signing cert + password | No |
-| react-native | `EXPO_TOKEN` | No |
-| cloudflare-pages | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | No |
 
 ```bash
 # Example: set npm OIDC-free secrets

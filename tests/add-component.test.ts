@@ -58,12 +58,12 @@ function git(dir: string, args: string[]): void {
   });
 }
 
-/** A target repo that detection maps to discord-bot (discord.js dependency). */
+/** A target repo that detection maps to mcp-server (@modelcontextprotocol/sdk dependency). */
 function makeRepo(opts: { gitInit?: boolean } = {}): string {
   const dir = mkdtempSync(join(tmpdir(), "ac-repo-"));
   writeFileSync(
     join(dir, "package.json"),
-    JSON.stringify({ name: "x", version: "1.0.0", dependencies: { "discord.js": "^14.0.0" } }),
+    JSON.stringify({ name: "x", version: "1.0.0", dependencies: { "@modelcontextprotocol/sdk": "^14.0.0" } }),
   );
   if (opts.gitInit !== false) {
     git(dir, ["init", "-q"]);
@@ -79,7 +79,7 @@ describe("addComponent — planning (dry-run default)", () => {
     try {
       const tarball = await packStarter(STARTER_FILES);
       const r = await addComponent(repo, {
-        starter: "discord-bot",
+        starter: "mcp-server",
         fetchOptions: { fetchImpl: fakeFetch(tarball) },
       });
       assert.equal(r.dryRun, true);
@@ -103,7 +103,7 @@ describe("addComponent — planning (dry-run default)", () => {
     try {
       const tarball = await packStarter(STARTER_FILES);
       const r = await addComponent(repo, {
-        starter: "discord-bot",
+        starter: "mcp-server",
         component: "security",
         fetchOptions: { fetchImpl: fakeFetch(tarball) },
       });
@@ -123,7 +123,7 @@ describe("addComponent — planning (dry-run default)", () => {
       delete partial[".github/workflows/maintenance.yml"];
       const tarball = await packStarter(partial);
       const r = await addComponent(repo, {
-        starter: "discord-bot",
+        starter: "mcp-server",
         component: "maintenance",
         fetchOptions: { fetchImpl: fakeFetch(tarball) },
       });
@@ -141,7 +141,7 @@ describe("addComponent — apply", () => {
     const repo = makeRepo();
     try {
       const tarball = await packStarter(STARTER_FILES);
-      const opts = { starter: "discord-bot", fetchOptions: { fetchImpl: fakeFetch(tarball) } };
+      const opts = { starter: "mcp-server", fetchOptions: { fetchImpl: fakeFetch(tarball) } };
       const applied = await addComponent(repo, { ...opts, dryRun: false });
       assert.equal(applied.written.length, Object.values(COMPONENT_GROUPS).flat().length);
       assert.equal(readFileSync(join(repo, ".github/workflows/ci.yml"), "utf-8"), "name: CI\n");
@@ -160,7 +160,7 @@ describe("addComponent — apply", () => {
     const repo = makeRepo();
     try {
       const tarball = await packStarter(STARTER_FILES);
-      const opts = { starter: "discord-bot", component: "ci" as const, fetchOptions: { fetchImpl: fakeFetch(tarball) } };
+      const opts = { starter: "mcp-server", component: "ci" as const, fetchOptions: { fetchImpl: fakeFetch(tarball) } };
       mkdirSync(join(repo, ".github/workflows"), { recursive: true });
       writeFileSync(join(repo, ".github/workflows/ci.yml"), "name: MINE\n");
       git(repo, ["add", "."]);
@@ -182,7 +182,7 @@ describe("addComponent — apply", () => {
     const repo = makeRepo();
     try {
       const tarball = await packStarter(STARTER_FILES);
-      const opts = { starter: "discord-bot", fetchOptions: { fetchImpl: fakeFetch(tarball) } };
+      const opts = { starter: "mcp-server", fetchOptions: { fetchImpl: fakeFetch(tarball) } };
       writeFileSync(join(repo, "uncommitted.txt"), "wip\n");
       await assert.rejects(
         () => addComponent(repo, { ...opts, dryRun: false }),
@@ -200,7 +200,7 @@ describe("addComponent — apply", () => {
     try {
       const tarball = await packStarter(STARTER_FILES);
       const r = await addComponent(repo, {
-        starter: "discord-bot",
+        starter: "mcp-server",
         component: "ci",
         dryRun: false,
         fetchOptions: { fetchImpl: fakeFetch(tarball) },
@@ -219,7 +219,7 @@ describe("addComponent — starter resolution", () => {
     try {
       const tarball = await packStarter(STARTER_FILES);
       const r = await addComponent(repo, { fetchOptions: { fetchImpl: fakeFetch(tarball) } });
-      assert.equal(r.starter, "discord-bot");
+      assert.equal(r.starter, "mcp-server");
       assert.equal(r.starterSource, "detected");
     } finally {
       rmSync(repo, { recursive: true, force: true });
@@ -231,7 +231,7 @@ describe("addComponent — starter resolution", () => {
     try {
       await assert.rejects(
         () => addComponent(repo, { starter: "nope" }),
-        /unknown starter 'nope'.*discord-bot/s,
+        /unknown starter 'nope'.*mcp-server/s,
       );
     } finally {
       rmSync(repo, { recursive: true, force: true });
@@ -270,25 +270,18 @@ describe("addComponent — cold-start rescue of a vibe-coded export", () => {
     return dir;
   }
 
-  it("detects a low-confidence deploy starter and WARNS instead of throwing", async () => {
+  it("rejects an unavailable detected template before fetching", async () => {
     const repo = makeViteRepo();
+    let fetched = false;
     try {
-      const tarball = await packStarter(STARTER_FILES);
-      const r = await addComponent(repo, { fetchOptions: { fetchImpl: fakeFetch(tarball) } });
-      assert.equal(r.starter, "cloudflare-pages");
-      assert.equal(r.starterSource, "detected");
-      assert.equal(r.dryRun, true);
-      // The warning is a product surface: it names the guess, the confidence,
-      // the reason, and how to override.
-      const warning = r.warnings.find((w) => /cloudflare-pages/.test(w));
-      assert.ok(warning, "expected a low-confidence detection warning");
-      assert.match(warning!, /low confidence/);
-      assert.match(warning!, /front-end web app/);
-      assert.match(warning!, /--starter/);
-      const text = formatAddComponentReport(r);
-      assert.match(text, /mode: DRY-RUN/);
-      assert.match(text, /review the plan above, then apply with: starter-series add-component \[path\] --apply/);
-      assert.match(text, /warning: detected 'cloudflare-pages'/);
+      await assert.rejects(
+        () => addComponent(repo, { fetchOptions: { fetchImpl: (async () => {
+          fetched = true;
+          throw new Error("must not fetch a retired template");
+        }) as typeof fetch } }),
+        /cloudflare-pages.*no longer available for downloads/,
+      );
+      assert.equal(fetched, false);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -301,7 +294,7 @@ describe("addComponent — cold-start rescue of a vibe-coded export", () => {
       await assert.rejects(
         () => addComponent(repo),
         (err: Error) => {
-          assert.match(err.message, /cloudflare-pages/);
+          assert.doesNotMatch(err.message, /--starter cloudflare-pages/);
           assert.match(err.message, /docker-deploy/);
           assert.match(err.message, /npm-package/);
           assert.match(err.message, /web app|static site/);

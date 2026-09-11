@@ -180,7 +180,10 @@ describe("MCP server — contract test (outputSchema ↔ structuredContent)", ()
     const sc = res.result?.structuredContent as { templates?: unknown[] } | undefined;
     assert.ok(sc, "list_templates: missing structuredContent");
     assert.ok(Array.isArray(sc.templates), "list_templates: templates is not an array");
-    assert.equal(sc.templates!.length, 11, "list_templates: expected 11 templates");
+    assert.equal(sc.templates!.length, 6, "list_templates: expected 6 public templates");
+    assert.deepEqual(sc.templates!.map((t) => (t as { id: string }).id).sort(), [
+      "browser-extension", "docker-deploy", "mcp-server", "mcp-server-python", "npm-package", "vscode-extension",
+    ]);
   });
 
   it("audit_release on this repo returns structuredContent matching schema", async () => {

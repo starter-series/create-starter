@@ -19,7 +19,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { getTemplate, archiveUrl, templates } from "./templates.js";
+import { getTemplate, archiveUrl, templates, retiredTemplateIds } from "./templates.js";
 import { fetchTarball, extractTarball, type FetchOptions } from "./download.js";
 import { extractStarterSignals } from "./starter-detect.js";
 import { tryGit } from "./audit-helpers.js";
@@ -99,6 +99,9 @@ export async function addComponent(
   let starterSource: "explicit" | "detected";
   if (opts.starter) {
     if (!getTemplate(opts.starter)) {
+      if (retiredTemplateIds.includes(opts.starter)) {
+        throw new Error(`starter '${opts.starter}' is no longer available for downloads. Existing repositories can still be audited. Use --starter with an available template: ${templates.map((t) => t.id).join(", ")}`);
+      }
       throw new Error(
         `unknown starter '${opts.starter}' (known: ${templates.map((t) => t.id).join(", ")})`,
       );
@@ -110,7 +113,7 @@ export async function addComponent(
     if (!signals.id || signals.confidence === "none") {
       throw new Error(
         "couldn't tell what this repo ships as. Re-run with the starter that fits:\n" +
-          "  • web app or static site   → --starter cloudflare-pages\n" +
+          "  • web app or static site   → choose and configure a deployment target first\n" +
           "  • containerized service/API → --starter docker-deploy\n" +
           "  • publishable npm library   → --starter npm-package\n" +
           `  full list: ${templates.map((t) => t.id).join(", ")}`,
@@ -129,7 +132,10 @@ export async function addComponent(
       );
     }
   }
-  const template = getTemplate(starterId)!;
+  const template = getTemplate(starterId);
+  if (!template) {
+    throw new Error(`detected starter '${starterId}' is no longer available for downloads. Existing repositories can still be audited. Choose a compatible public template explicitly with --starter: ${templates.map((t) => t.id).join(", ")}`);
+  }
 
   // 2. Dirty-tree guard — only when actually writing.
   const porcelain = tryGit(repoPath, ["status", "--porcelain"]);
